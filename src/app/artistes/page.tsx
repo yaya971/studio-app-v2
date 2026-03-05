@@ -17,7 +17,6 @@ export default function ArtistesPage() {
     telephone: ''
   });
 
-  // Cette fonction s'active au chargement de la page pour aller chercher les artistes
   useEffect(() => {
     fetchArtistes();
   }, []);
@@ -35,7 +34,6 @@ export default function ArtistesPage() {
     setLoading(false);
   };
 
-  // Cette fonction s'active quand tu cliques sur "Enregistrer" dans le formulaire
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -45,9 +43,9 @@ export default function ArtistesPage() {
       .insert([formData]);
 
     if (!error) {
-      setFormData({ nom: '', email: '', telephone: '' }); // On vide le formulaire
-      setIsModalOpen(false); // On ferme la fenêtre
-      fetchArtistes(); // On rafraîchit la liste avec le nouveau venu
+      setFormData({ nom: '', email: '', telephone: '' });
+      setIsModalOpen(false);
+      fetchArtistes();
     } else {
       alert("Erreur lors de l'ajout de l'artiste. Vérifiez votre connexion.");
     }
@@ -106,7 +104,6 @@ export default function ArtistesPage() {
         </div>
       )}
 
-      {/* La fenêtre Pop-up (Modal) */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nouvel Artiste">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -136,3 +133,19 @@ export default function ArtistesPage() {
               type="tel" 
               value={formData.telephone}
               onChange={(e) => setFormData({...formData, telephone: e.target.value})}
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none"
+              placeholder="06 12 34 56 78"
+            />
+          </div>
+          <button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 disabled:opacity-50"
+          >
+            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'Enregistrer'}
+          </button>
+        </form>
+      </Modal>
+    </div>
+  );
+}
