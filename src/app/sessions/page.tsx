@@ -1,231 +1,213 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { db } from '@/lib/db';
+import React, { useState, useEffect } from 'react';
+import { Mic2, Plus, Loader2, Calendar, FileText, Folder } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { Projet } from '@/lib/types';
 import Modal from '@/components/Modal';
-import { Plus, Mic2, Loader2, Save } from 'lucide-react';
-
-interface SessionWithProject {
-  id: string;
-  project_id: string;
-  artist_id: string;
-  date: string;
-  notes?: string;
-  status: string;
-  projets?: {
-    name: string;
-  };
-}
 
 export default function SessionsPage() {
-  const [sessions, setSessions] = useState<SessionWithProject[]>([]);
-  const [projets, setProjets] = useState<Projet[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [projets, setProjets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [role, setRole] = useState<'Admin' | 'Artiste' | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Form state
-  const [newProjectId, setNewProjectId] = useState('');
-  const [newDate, setNewDate] = useState('');
-  const [newArtistId, setNewArtistId] = useState('');
-
-  // Notes state
-  const [selectedSession, setSelectedSession] = useState<SessionWithProject | null>(null);
-  const [notes, setNotes] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    date: '',
+    notes: '',
+    project_id: ''
+  });
 
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        const userRole = user.email?.includes('admin') ? 'Admin' : 'Artiste';
-        setRole(userRole);
-        
-        try {
-          const [sessionsData, projetsData] = await Promise.all([
-            db.sessions.getAll(userRole, user.id),
-            db.projets.getAll(userRole, user.id)
-          ]);
-          setSessions(sessionsData);
-          setProjets(projetsData);
-        } catch (err) {
-          console.error(err);
-        }
-      }
-      setLoading(false);
-    };
     fetchData();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const fetchData = async () => {
+    setLoading(true);
+    
+    // On récupère les sessions
+    const { data: sessionsData } = await supabase
+      .from('sessions')
+      .select('*')
+      .order('date', { ascending: false });
+      
+    // On récupère les projets pour la liste déroulante
+    const { data: projetsData } = await supabase
+      .from('projets')
+      .select('id, title')
+      .order('title', { ascending: true });
+    
+    if (sessionsData) setSessions(sessionsData);
+    if (projetsData) setProjets(projetsData);
+    
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await db.sessions.create({
-        project_id: newProjectId,
-        date: newDate,
-        artist_id: newArtistId || userId || '',
-        status: 'Prévue',
-        notes: ''
-      });
-      const updatedSessions = await db.sessions.getAll(role!, userId!);
-      setSessions(updatedSessions);
+    setIsSubmitting(true);
+    
+    // On convertit la date locale pour Supabase
+    const sessionDataToInsert = {
+      ...formData,
+      date: new Date(formData.date).toISOString(),
+    };
+    
+    const { error } = await supabase
+      .from('sessions')
+      .insert([sessionDataToInsert]);
+
+    if (!error) {
+      setFormData({ title: '', date: '', notes: '', project_id: '' });
       setIsModalOpen(false);
-      setNewProjectId('');
-      setNewDate('');
-      setNewArtistId('');
-    } catch (err) {
-      console.error(err);
+      fetchData();
+    } else {
+      alert("Erreur lors de la création de la session.");
     }
+    setIsSubmitting(false);
   };
 
-  const handleSaveNotes = async () => {
-    if (!selectedSession) return;
-    setSavingNotes(true);
-    try {
-      await db.sessions.updateNotes(selectedSession.id, notes);
-      setSessions(sessions.map(s => s.id === selectedSession.id ? { ...s, notes } : s));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSavingNotes(false);
-    }
+  // Petite fonction pour retrouver le nom du projet via son ID
+  const getProjectName = (projectId: string) => {
+    const projet = projets.find(p => p.id === projectId);
+    return projet ? projet.title : 'Projet inconnu';
   };
 
-  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin text-neon-green" size={48} /></div>;
+  // Formatage de la date pour un affichage propre (ex: 12 Mars 2024 - 14:30)
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      day: 'numeric', month: 'long', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit' 
+    };
+    return new Date(dateString).toLocaleDateString('fr-FR', options);
+  };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-8rem)]">
-      <div className="lg:col-span-1 space-y-6 overflow-y-auto pr-4">
-        <header className="flex justify-between items-center sticky top-0 bg-black py-2 z-10">
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="neon-text">Sessions</span>
+    <div className="p-8">
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
+            Sessions
           </h1>
-          {role === 'Admin' && (
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="p-2 bg-neon-green text-black rounded-lg hover:neon-glow transition-all"
-            >
-              <Plus size={20} />
-            </button>
-          )}
-        </header>
+          <p className="mt-2 text-gray-400">Gérez vos heures d'enregistrement et de mixage.</p>
+        </div>
+        
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 hover:shadow-[0_0_15px_rgba(74,222,128,0.4)]"
+        >
+          <Plus size={20} />
+          Nouvelle session
+        </button>
+      </div>
 
-        <div className="space-y-4">
+      {loading ? (
+        <div className="flex h-40 items-center justify-center">
+          <Loader2 className="animate-spin text-[#4ade80]" size={32} />
+        </div>
+      ) : sessions.length === 0 ? (
+        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-8 text-center shadow-[0_0_15px_rgba(74,222,128,0.1)]">
+          <Mic2 className="mx-auto mb-4 text-[#4ade80]/50" size={48} />
+          <h3 className="mb-2 text-xl font-bold text-white">Aucune session prévue</h3>
+          <p className="text-gray-400">Planifiez votre première session de studio.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sessions.map((session) => (
-            <div 
-              key={session.id} 
-              className={`p-4 rounded-xl border transition-all cursor-pointer relative group
-                ${selectedSession?.id === session.id 
-                  ? 'border-neon-green bg-neon-green/5 neon-glow' 
-                  : 'border-white/5 hover:border-neon-green/30 bg-white/5'
-                }`}
-              onClick={() => {
-                setSelectedSession(session);
-                setNotes(session.notes || '');
-              }}
-            >
-              <Link 
-                href={`/sessions/${session.id}`}
-                className="absolute top-4 right-4 text-[10px] text-neon-green opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
-              >
-                Détails →
-              </Link>
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-bold text-neon-green uppercase">{session.status}</span>
-                <span className="text-xs text-slate-500">{new Date(session.date).toLocaleDateString()}</span>
+            <div key={session.id} className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 transition-all hover:border-[#4ade80]/80 hover:shadow-[0_0_15px_rgba(74,222,128,0.2)]">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#4ade80]/20 text-[#4ade80]">
+                  <Mic2 size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">{session.title}</h3>
+                  <span className="flex items-center gap-1 text-sm font-medium text-[#4ade80]">
+                    <Folder size={14} /> {getProjectName(session.project_id)}
+                  </span>
+                </div>
               </div>
-              <h4 className="font-bold text-white mb-1">{session.projets?.name || "Projet Inconnu"}</h4>
-              <p className="text-xs text-slate-400">Artiste: {session.artist_id.slice(0, 8)}...</p>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-gray-300">
+                  <Calendar size={16} className="text-[#4ade80]" /> 
+                  <span>{formatDate(session.date)}</span>
+                </div>
+                
+                {session.notes && (
+                  <div className="rounded border border-gray-800 bg-gray-900/50 p-3 text-sm text-gray-400">
+                    <div className="mb-1 flex items-center gap-2 text-gray-500">
+                      <FileText size={14} /> Notes:
+                    </div>
+                    {session.notes}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
-          {sessions.length === 0 && (
-            <p className="text-center text-slate-500 py-10 italic">Aucune session.</p>
-          )}
         </div>
-      </div>
+      )}
 
-      <div className="lg:col-span-2 flex flex-col gap-6 h-full">
-        {selectedSession ? (
-          <>
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold">Notes de Session</h2>
-                <p className="text-slate-400 text-sm">{selectedSession.projets?.name} - {new Date(selectedSession.date).toLocaleDateString()}</p>
-              </div>
-              <button 
-                onClick={handleSaveNotes}
-                disabled={savingNotes}
-                className="flex items-center gap-2 px-6 py-3 bg-neon-green text-black font-bold rounded-xl hover:neon-glow transition-all disabled:opacity-50"
-              >
-                {savingNotes ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                Sauvegarder
-              </button>
-            </div>
-            <textarea 
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Prenez vos notes ici..."
-              className="flex-1 w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-white text-lg focus:ring-2 focus:ring-neon-green/50 focus:border-neon-green outline-none resize-none"
-            />
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-white/5 rounded-2xl">
-            <Mic2 size={64} className="mb-4 opacity-20" />
-            <p>Sélectionnez une session pour voir les notes.</p>
-          </div>
-        )}
-      </div>
-
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title="Programmer une session"
-      >
-        <form onSubmit={handleCreate} className="space-y-4">
+      {/* Le Formulaire de Session */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nouvelle Session">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Projet</label>
-            <select 
+            <label className="mb-1 block text-sm text-gray-400">Titre de la session *</label>
+            <input 
+              type="text" 
               required
-              value={newProjectId}
-              onChange={(e) => setNewProjectId(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-white focus:ring-2 focus:ring-neon-green/50 focus:border-neon-green outline-none"
+              value={formData.title}
+              onChange={(e) => setFormData({...formData, title: e.target.value})}
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none"
+              placeholder="Ex: Prises voix Lead"
+            />
+          </div>
+          
+          <div>
+            <label className="mb-1 block text-sm text-gray-400">Projet associé *</label>
+            <select
+              required
+              value={formData.project_id}
+              onChange={(e) => setFormData({...formData, project_id: e.target.value})}
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none [&>option]:bg-black"
             >
-              <option value="" className="bg-black">Sélectionner un projet</option>
-              {projets.map(p => (
-                <option key={p.id} value={p.id} className="bg-black">{p.name}</option>
+              <option value="">Sélectionnez un projet...</option>
+              {projets.map(projet => (
+                <option key={projet.id} value={projet.id}>
+                  {projet.title}
+                </option>
               ))}
             </select>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
+            <label className="mb-1 block text-sm text-gray-400">Date et Heure *</label>
             <input 
-              type="datetime-local" 
+              type="datetime-local"
               required
-              value={newDate}
-              onChange={(e) => setNewDate(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-white focus:ring-2 focus:ring-neon-green/50 focus:border-neon-green outline-none"
+              value={formData.date}
+              onChange={(e) => setFormData({...formData, date: e.target.value})}
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none [color-scheme:dark]"
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">ID de l&apos;artiste</label>
-            <input 
-              type="text" 
-              value={newArtistId}
-              onChange={(e) => setNewArtistId(e.target.value)}
-              placeholder="Laisser vide pour votre propre ID"
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-white focus:ring-2 focus:ring-neon-green/50 focus:border-neon-green outline-none"
+            <label className="mb-1 block text-sm text-gray-400">Notes (Optionnel)</label>
+            <textarea 
+              value={formData.notes}
+              onChange={(e) => setFormData({...formData, notes: e.target.value})}
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none"
+              placeholder="Matériel utilisé, réglages, intentions..."
+              rows={3}
             />
           </div>
+
           <button 
-            type="submit"
-            className="w-full py-3 bg-neon-green text-black font-bold rounded-xl hover:neon-glow-strong transition-all mt-4"
+            type="submit" 
+            disabled={isSubmitting}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 disabled:opacity-50"
           >
-            Programmer la session
+            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'Planifier la session'}
           </button>
         </form>
       </Modal>
