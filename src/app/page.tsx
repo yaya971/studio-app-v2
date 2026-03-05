@@ -66,7 +66,7 @@ export default function DashboardPage() {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
-          Tableau de Bord
+          MON STUDIO TEST
         </h1>
         <p className="mt-2 text-gray-400">Bienvenue dans votre interface de gestion néon.</p>
       </div>
