@@ -1,154 +1,175 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { db } from '@/lib/db';
+import React, { useState, useEffect } from 'react';
+import { Folder, Plus, Loader2, User, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { Projet } from '@/lib/types';
 import Modal from '@/components/Modal';
-import { Plus, Folder, Loader2 } from 'lucide-react';
 
 export default function ProjetsPage() {
-  const [projets, setProjets] = useState<Projet[]>([]);
+  const [projets, setProjets] = useState<any[]>([]);
+  const [artistes, setArtistes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [role, setRole] = useState<'Admin' | 'Artiste' | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Form state
-  const [newName, setNewName] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newArtistId, setNewArtistId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    artiste_id: ''
+  });
 
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        const userRole = user.email?.includes('admin') ? 'Admin' : 'Artiste';
-        setRole(userRole);
-        
-        try {
-          const data = await db.projets.getAll(userRole, user.id);
-          setProjets(data);
-        } catch (err) {
-          console.error(err);
-        }
-      }
-      setLoading(false);
-    };
     fetchData();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const newProjet = await db.projets.create({
-        name: newName,
-        description: newDesc,
-        artist_id: newArtistId || userId || '',
-        status: 'En cours',
-      });
-      setProjets([...projets, newProjet]);
-      setIsModalOpen(false);
-      setNewName('');
-      setNewDesc('');
-      setNewArtistId('');
-    } catch (err) {
-      console.error(err);
+  const fetchData = async () => {
+    setLoading(true);
+    
+    // On va chercher les projets ET on demande à Supabase de nous ramener le nom de l'artiste lié !
+    const { data: projetsData, error: projetsError } = await supabase
+      .from('projets')
+      .select('*, artistes(nom)')
+      .order('created_at', { ascending: false });
+      
+    // On va chercher la liste des artistes pour le menu déroulant
+    const { data: artistesData } = await supabase
+      .from('artistes')
+      .select('id, nom')
+      .order('nom', { ascending: true });
+    
+    if (!projetsError && projetsData) {
+      setProjets(projetsData);
     }
+    if (artistesData) {
+      setArtistes(artistesData);
+    }
+    
+    setLoading(false);
   };
 
-  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin text-neon-green" size={48} /></div>;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    const { error } = await supabase
+      .from('projets')
+      .insert([formData]);
+
+    if (!error) {
+      setFormData({ title: '', description: '', artiste_id: '' });
+      setIsModalOpen(false);
+      fetchData();
+    } else {
+      alert("Erreur lors de la création du projet.");
+    }
+    setIsSubmitting(false);
+  };
 
   return (
-    <div className="space-y-10">
-      <header className="flex justify-between items-center">
+    <div className="p-8">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight mb-2">
-            Mes <span className="neon-text">Projets</span>
+          <h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
+            Projets
           </h1>
-          <p className="text-slate-400">Gérez vos productions et albums.</p>
+          <p className="mt-2 text-gray-400">Gérez les productions, albums et singles.</p>
         </div>
-        {role === 'Admin' && (
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-neon-green text-black font-bold rounded-xl hover:neon-glow transition-all"
-          >
-            <Plus size={20} />
-            Nouveau Projet
-          </button>
-        )}
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projets.map((projet) => (
-          <div key={projet.id} className="p-6 rounded-2xl bg-black border border-white/5 hover:neon-border transition-all duration-300">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 rounded-xl bg-neon-green/10 text-neon-green">
-                <Folder size={24} />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">{projet.name}</h3>
-                <span className="text-xs text-neon-green bg-neon-green/10 px-2 py-1 rounded">
-                  {projet.status}
-                </span>
-              </div>
-            </div>
-            <p className="text-slate-400 text-sm mb-6 line-clamp-2">
-              {projet.description || "Aucune description fournie."}
-            </p>
-            <div className="flex justify-between items-center text-xs text-slate-500">
-              <span>ID Artiste: {projet.artist_id.slice(0, 8)}...</span>
-              <span>{new Date(projet.created_at).toLocaleDateString()}</span>
-            </div>
-          </div>
-        ))}
-        {projets.length === 0 && (
-          <div className="col-span-full py-20 text-center border-2 border-dashed border-white/5 rounded-2xl">
-            <p className="text-slate-500">Aucun projet trouvé.</p>
-          </div>
-        )}
+        
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 hover:shadow-[0_0_15px_rgba(74,222,128,0.4)]"
+        >
+          <Plus size={20} />
+          Nouveau projet
+        </button>
       </div>
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title="Créer un nouveau projet"
-      >
-        <form onSubmit={handleCreate} className="space-y-4">
+      {loading ? (
+        <div className="flex h-40 items-center justify-center">
+          <Loader2 className="animate-spin text-[#4ade80]" size={32} />
+        </div>
+      ) : projets.length === 0 ? (
+        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-8 text-center shadow-[0_0_15px_rgba(74,222,128,0.1)]">
+          <Folder className="mx-auto mb-4 text-[#4ade80]/50" size={48} />
+          <h3 className="mb-2 text-xl font-bold text-white">Aucun projet</h3>
+          <p className="text-gray-400">Commencez par créer un projet pour y associer des sessions.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {projets.map((projet) => (
+            <div key={projet.id} className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 transition-all hover:border-[#4ade80]/80 hover:shadow-[0_0_15px_rgba(74,222,128,0.2)]">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#4ade80]/20 text-[#4ade80]">
+                  <Folder size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">{projet.title}</h3>
+                  {/* On affiche le nom de l'artiste lié */}
+                  <span className="text-sm font-medium text-[#4ade80]">
+                    {projet.artistes?.nom || 'Artiste inconnu'}
+                  </span>
+                </div>
+              </div>
+              {projet.description && (
+                <div className="mt-4 flex gap-2 text-sm text-gray-400">
+                  <FileText size={16} className="shrink-0 mt-0.5" /> 
+                  <p>{projet.description}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Le Formulaire de Projet */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nouveau Projet">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Nom du projet</label>
+            <label className="mb-1 block text-sm text-gray-400">Titre du projet *</label>
             <input 
               type="text" 
               required
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-white focus:ring-2 focus:ring-neon-green/50 focus:border-neon-green outline-none"
+              value={formData.title}
+              onChange={(e) => setFormData({...formData, title: e.target.value})}
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none"
+              placeholder="Ex: EP Neon Nights"
             />
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Description</label>
+            <label className="mb-1 block text-sm text-gray-400">Artiste associé *</label>
+            <select
+              required
+              value={formData.artiste_id}
+              onChange={(e) => setFormData({...formData, artiste_id: e.target.value})}
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none [&>option]:bg-black"
+            >
+              <option value="">Sélectionnez un artiste...</option>
+              {artistes.map(artiste => (
+                <option key={artiste.id} value={artiste.id}>
+                  {artiste.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm text-gray-400">Description (Optionnel)</label>
             <textarea 
-              value={newDesc}
-              onChange={(e) => setNewDesc(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-white focus:ring-2 focus:ring-neon-green/50 focus:border-neon-green outline-none h-24"
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none"
+              placeholder="Notes sur le projet..."
+              rows={3}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">ID de l&apos;artiste</label>
-            <input 
-              type="text" 
-              value={newArtistId}
-              onChange={(e) => setNewArtistId(e.target.value)}
-              placeholder="Laisser vide pour votre propre ID"
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-white focus:ring-2 focus:ring-neon-green/50 focus:border-neon-green outline-none"
-            />
-          </div>
+
           <button 
-            type="submit"
-            className="w-full py-3 bg-neon-green text-black font-bold rounded-xl hover:neon-glow-strong transition-all mt-4"
+            type="submit" 
+            disabled={isSubmitting}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 disabled:opacity-50"
           >
-            Créer le projet
+            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'Créer le projet'}
           </button>
         </form>
       </Modal>
