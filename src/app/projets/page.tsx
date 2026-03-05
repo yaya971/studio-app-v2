@@ -25,24 +25,19 @@ export default function ProjetsPage() {
   const fetchData = async () => {
     setLoading(true);
     
-    // On va chercher les projets ET on demande à Supabase de nous ramener le nom de l'artiste lié !
-    const { data: projetsData, error: projetsError } = await supabase
+    // Requête simplifiée !
+    const { data: projetsData } = await supabase
       .from('projets')
-      .select('*, artistes(nom)')
+      .select('*')
       .order('created_at', { ascending: false });
       
-    // On va chercher la liste des artistes pour le menu déroulant
     const { data: artistesData } = await supabase
       .from('artistes')
       .select('id, nom')
       .order('nom', { ascending: true });
     
-    if (!projetsError && projetsData) {
-      setProjets(projetsData);
-    }
-    if (artistesData) {
-      setArtistes(artistesData);
-    }
+    if (projetsData) setProjets(projetsData);
+    if (artistesData) setArtistes(artistesData);
     
     setLoading(false);
   };
@@ -104,10 +99,6 @@ export default function ProjetsPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-white">{projet.title}</h3>
-                  {/* On affiche le nom de l'artiste lié */}
-                  <span className="text-sm font-medium text-[#4ade80]">
-                    {projet.artistes?.nom || 'Artiste inconnu'}
-                  </span>
                 </div>
               </div>
               {projet.description && (
