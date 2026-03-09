@@ -66,8 +66,8 @@ export default function Sidebar() {
   return (
     <div className="flex h-screen w-64 flex-col border-r border-gray-800 bg-black/50 p-6">
       <div className="mb-10">
-        <h2 className="text-2xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
-          STUDIO V2
+        <h2 className="text-2xl font-bold text-[#10b981] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
+          LACAV & me
         </h2>
         <div className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold border ${
           role === 'ADMIN' 
