@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Folder, Plus, Loader2, FileText, Edit, Trash2, ListMusic, MessageSquare } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 
 export default function ProjetsPage() {
+  const router = useRouter();
   const [projets, setProjets] = useState<any[]>([]);
   const [artistes, setArtistes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,6 @@ export default function ProjetsPage() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [newSongTitle, setNewSongTitle] = useState('');
 
-  // NOUVEAU : États pour la To-Do List (Retours)
   const [activeRetoursId, setActiveRetoursId] = useState<string | null>(null);
   const [retoursText, setRetoursText] = useState('');
 
@@ -35,38 +36,50 @@ export default function ProjetsPage() {
   }, []);
 
   const fetchData = async () => {
-    setLoading(true);
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    let loggedInArtiste = null;
-    if (session) {
-      const { data } = await supabase.from('artistes').select('id, nom').eq('user_id', session.user.id).single();
+    try {
+      setLoading(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+
+      let loggedInArtiste = null;
+      // maybeSingle() évite que l'application plante si l'Admin n'est pas dans la table "artistes"
+      const { data } = await supabase.from('artistes').select('id, nom').eq('user_id', session.user.id).maybeSingle();
       if (data) loggedInArtiste = data;
-    }
-    setCurrentArtiste(loggedInArtiste);
+      
+      setCurrentArtiste(loggedInArtiste);
 
-    let projetsQuery = supabase.from('projets').select('*, artistes(nom), chansons(*)').order('created_at', { ascending: false });
-    let artistesQuery = supabase.from('artistes').select('id, nom').order('nom', { ascending: true });
+      let projetsQuery = supabase.from('projets').select('*, artistes(nom), chansons(*)').order('created_at', { ascending: false });
+      let artistesQuery = supabase.from('artistes').select('id, nom').order('nom', { ascending: true });
 
-    if (loggedInArtiste) {
-      projetsQuery = projetsQuery.eq('artiste_id', loggedInArtiste.id);
-      artistesQuery = artistesQuery.eq('id', loggedInArtiste.id);
-    }
+      if (loggedInArtiste) {
+        projetsQuery = projetsQuery.eq('artiste_id', loggedInArtiste.id);
+        artistesQuery = artistesQuery.eq('id', loggedInArtiste.id);
+      }
 
-    const { data: projetsData } = await projetsQuery;
-    const { data: artistesData } = await artistesQuery;
-    
-    if (projetsData) {
-      projetsData.forEach(p => {
-        if (p.chansons) {
-          p.chansons.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        }
-      });
-      setProjets(projetsData);
+      const { data: projetsData } = await projetsQuery;
+      const { data: artistesData } = await artistesQuery;
+      
+      if (projetsData) {
+        projetsData.forEach(p => {
+          if (p.chansons) {
+            p.chansons.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          }
+        });
+        setProjets(projetsData);
+      }
+      if (artistesData) setArtistes(artistesData);
+
+    } catch (error) {
+      console.error("Erreur de chargement :", error);
+    } finally {
+      // CEINTURE DE SÉCURITÉ : On arrête de tourner !
+      setLoading(false);
     }
-    if (artistesData) setArtistes(artistesData);
-    
-    setLoading(false);
   };
 
   const openNewModal = () => {
@@ -129,7 +142,6 @@ export default function ProjetsPage() {
     }
   };
 
-  // NOUVEAU : Gérer l'ouverture du carnet de notes
   const toggleRetours = (chanson: any) => {
     if (activeRetoursId === chanson.id) {
       setActiveRetoursId(null);
@@ -139,7 +151,6 @@ export default function ProjetsPage() {
     }
   };
 
-  // NOUVEAU : Sauvegarder les notes dans la base de données
   const saveRetours = async (id: string) => {
     const { error } = await supabase.from('chansons').update({ retours_artiste: retoursText }).eq('id', id);
     if (!error) {
