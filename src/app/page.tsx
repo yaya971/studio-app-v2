@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock } from 'lucide-react';
+import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, MessageSquare, Bell } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
@@ -9,8 +9,12 @@ export default function DashboardPage() {
   const [role, setRole] = useState<'ADMIN' | 'ARTISTE' | null>(null);
   const [loading, setLoading] = useState(true);
   
+  // Admin States
   const [adminStats, setAdminStats] = useState({ artistes: 0, projets: 0, sessions: 0, revenus: 0 });
   const [adminRecentSessions, setAdminRecentSessions] = useState<any[]>([]);
+  const [adminRetours, setAdminRetours] = useState<any[]>([]); // NOUVEAU : Les notifications de retours
+
+  // Artiste States
   const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
 
   useEffect(() => {
@@ -26,7 +30,7 @@ export default function DashboardPage() {
         return;
       }
 
-      const { data: artiste } = await supabase.from('artistes').select('*').eq('user_id', session.user.id).single();
+      const { data: artiste } = await supabase.from('artistes').select('*').eq('user_id', session.user.id).maybeSingle();
 
       if (artiste) {
         setRole('ARTISTE');
@@ -35,6 +39,8 @@ export default function DashboardPage() {
         setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: sessions || [] });
       } else {
         setRole('ADMIN');
+        
+        // Chiffres clés
         const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
         const { count: projetsCount } = await supabase.from('projets').select('*', { count: 'exact', head: true });
         const { count: sessionsCount, data: sessionsData } = await supabase.from('sessions').select('*, projets(title, artistes(nom))', { count: 'exact' }).order('date', { ascending: false }).limit(5);
@@ -45,8 +51,16 @@ export default function DashboardPage() {
           totalRevenus = financesData.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount), 0);
         }
 
+        // NOUVEAU : On va chercher toutes les chansons qui ont des retours écrits !
+        const { data: retoursData } = await supabase
+          .from('chansons')
+          .select('id, titre, retours_artiste, projets(title, artistes(nom))')
+          .neq('retours_artiste', '') // Seulement celles où il y a du texte
+          .not('retours_artiste', 'is', null);
+
         setAdminStats({ artistes: artistesCount || 0, projets: projetsCount || 0, sessions: sessionsCount || 0, revenus: totalRevenus });
         if (sessionsData) setAdminRecentSessions(sessionsData);
+        if (retoursData) setAdminRetours(retoursData);
       }
     } catch (error) {
       console.error("Erreur de chargement :", error);
@@ -93,7 +107,6 @@ export default function DashboardPage() {
                       <span className="text-gray-400 flex items-center gap-1 text-sm"><Music size={14} /> {totalSongs} Titre{totalSongs > 1 ? 's' : ''}</span>
                     </div>
                     
-                    {/* Le nouveau résumé par statut */}
                     <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4 space-y-3 text-sm">
                       {totalSongs === 0 ? (
                         <p className="text-center text-gray-500 italic">Aucun titre ajouté pour le moment.</p>
@@ -164,24 +177,60 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
-        <h3 className="mb-6 text-xl font-bold text-[#4ade80]">Sessions Récentes</h3>
-        {adminRecentSessions.length === 0 ? <p className="text-gray-400">Aucune session.</p> : (
-          <div className="space-y-4">
-            {adminRecentSessions.map((session) => (
-              <div key={session.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#4ade80]/10 text-[#4ade80]"><Mic2 size={20} /></div>
-                  <div>
-                    <h4 className="font-bold text-white">{session.title}</h4>
-                    <p className="text-sm font-medium text-[#4ade80]">{session.projets?.artistes?.nom} • <span className="text-gray-400">{session.projets?.title}</span></p>
+      <div className="grid gap-8 lg:grid-cols-2">
+        {/* COLONNE 1 : SESSIONS RÉCENTES */}
+        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
+          <h3 className="mb-6 text-xl font-bold text-[#4ade80] flex items-center gap-2"><Clock size={24}/> Sessions Récentes</h3>
+          {adminRecentSessions.length === 0 ? <p className="text-gray-400">Aucune session.</p> : (
+            <div className="space-y-4">
+              {adminRecentSessions.map((session) => (
+                <div key={session.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#4ade80]/10 text-[#4ade80]"><Mic2 size={20} /></div>
+                    <div>
+                      <h4 className="font-bold text-white">{session.title}</h4>
+                      <p className="text-sm font-medium text-[#4ade80]">{session.projets?.artistes?.nom} • <span className="text-gray-400">{session.projets?.title}</span></p>
+                    </div>
+                  </div>
+                  <div className="text-right text-sm text-gray-400">{formatDate(session.date)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* COLONNE 2 : NOTIFICATIONS DE RETOURS (NOUVEAU) */}
+        <div className="rounded-xl border border-orange-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+          <h3 className="mb-6 text-xl font-bold text-orange-500 flex items-center gap-2">
+            <Bell size={24} className="animate-pulse" /> Retours à traiter
+          </h3>
+          {adminRetours.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+              <MessageSquare size={48} className="mb-4 opacity-20" />
+              <p>Aucun retour en attente.</p>
+              <p className="text-sm">Vos mixages sont parfaits !</p>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              {adminRetours.map((retour) => (
+                <div key={retour.id} className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 transition-all hover:border-orange-500/50">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h4 className="font-bold text-white">{retour.titre}</h4>
+                    <span className="text-xs font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded">
+                      {retour.projets?.artistes?.nom}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-3 flex items-center gap-1">
+                    <Folder size={12} /> {retour.projets?.title}
+                  </p>
+                  <div className="rounded bg-black/50 p-3 text-sm text-gray-300 border border-gray-800">
+                    <p className="whitespace-pre-wrap">{retour.retours_artiste}</p>
                   </div>
                 </div>
-                <div className="text-right text-sm text-gray-400">{formatDate(session.date)}</div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
