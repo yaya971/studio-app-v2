@@ -121,7 +121,7 @@ export default function ProjetsPage() {
   };
 
   const activeProject = projets.find(p => p.id === activeProjectId);
-  const isAdmin = !currentArtiste; // Variable simple pour savoir si on est l'admin
+  const isAdmin = !currentArtiste;
 
   return (
     <div className="p-8">
@@ -149,7 +149,8 @@ export default function ProjetsPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projets.map((projet) => {
             const totalSongs = projet.chansons?.length || 0;
-            const completedSongs = projet.chansons?.filter((c: any) => c.status === 'Terminé').length || 0;
+            // MISE À JOUR : On calcule la jauge avec le mot TERMINÉ
+            const completedSongs = projet.chansons?.filter((c: any) => c.status === 'TERMINÉ').length || 0;
             const progressPercentage = totalSongs === 0 ? 0 : Math.round((completedSongs / totalSongs) * 100);
 
             return (
@@ -188,7 +189,6 @@ export default function ProjetsPage() {
                     onClick={() => { setActiveProjectId(projet.id); setIsTrackModalOpen(true); }}
                     className="w-full flex items-center justify-center gap-2 rounded bg-white/5 py-2 text-sm font-medium text-white transition-all hover:bg-[#4ade80]/20 hover:text-[#4ade80]"
                   >
-                    {/* Le texte du bouton change si c'est un artiste ou l'admin */}
                     <ListMusic size={16} /> {isAdmin ? 'Gérer la Tracklist' : 'Voir la Tracklist'}
                   </button>
                 </div>
@@ -226,7 +226,6 @@ export default function ProjetsPage() {
       <Modal isOpen={isTrackModalOpen} onClose={() => setIsTrackModalOpen(false)} title={`Tracklist : ${activeProject?.title || ''}`}>
         <div className="space-y-6">
           
-          {/* Seul l'admin voit le formulaire d'ajout */}
           {isAdmin && (
             <form onSubmit={addChanson} className="flex gap-2">
               <input 
@@ -240,41 +239,42 @@ export default function ProjetsPage() {
             </form>
           )}
           
-          <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2">
+          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
             {activeProject?.chansons?.map((chanson: any) => (
-              <div key={chanson.id} className="flex items-center justify-between gap-4 rounded-lg border border-gray-800 bg-gray-900/50 p-3 transition-all hover:border-gray-600">
-                <span className={`font-medium flex-1 truncate ${chanson.status === 'Terminé' ? 'text-gray-500 line-through' : 'text-white'}`}>
+              <div key={chanson.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 transition-all hover:border-gray-600">
+                <span className={`font-medium flex-1 truncate ${chanson.status === 'TERMINÉ' ? 'text-gray-500 line-through' : 'text-white'}`}>
                   {chanson.titre}
                 </span>
                 
-                {/* On grise et on désactive le sélecteur si c'est un artiste */}
-                <select 
-                  value={chanson.status}
-                  onChange={(e) => updateChansonStatus(chanson.id, e.target.value)}
-                  disabled={!isAdmin}
-                  className={`rounded border px-2 py-1 text-xs focus:outline-none ${
-                    chanson.status === 'Terminé' ? 'border-[#4ade80] bg-[#4ade80]/10 text-[#4ade80]' : 'border-gray-700 bg-black text-gray-300 focus:border-[#4ade80]'
-                  } ${!isAdmin ? 'cursor-not-allowed opacity-70' : ''}`}
-                >
-                  <option value="Maquette">Maquette</option>
-                  <option value="Enregistrement">Enregistrement</option>
-                  <option value="Mixage">Mixage</option>
-                  <option value="Mastering">Mastering</option>
-                  <option value="Terminé">Terminé</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  <select 
+                    value={chanson.status}
+                    onChange={(e) => updateChansonStatus(chanson.id, e.target.value)}
+                    disabled={!isAdmin}
+                    className={`rounded border px-2 py-1.5 text-xs font-medium focus:outline-none w-full sm:w-auto ${
+                      chanson.status === 'TERMINÉ' ? 'border-[#4ade80] bg-[#4ade80]/10 text-[#4ade80]' : 
+                      chanson.status === 'EN ATTENTE DE CORRECTION DE LA PART DE LARTISTE' ? 'border-orange-500 bg-orange-500/10 text-orange-500' :
+                      'border-gray-700 bg-black text-gray-300 focus:border-[#4ade80]'
+                    } ${!isAdmin ? 'cursor-not-allowed opacity-70' : ''}`}
+                  >
+                    <option value="ENREGISTREMENT">ENREGISTREMENT</option>
+                    <option value="MIXAGE/MASTERING">MIXAGE/MASTERING</option>
+                    <option value="EN ATTENTE DE CORRECTION DE LA PART DE LARTISTE">EN ATTENTE DE CORRECTION...</option>
+                    <option value="TERMINÉ">TERMINÉ</option>
+                  </select>
 
-                {/* Seul l'admin voit le bouton de suppression */}
-                {isAdmin && (
-                  <button onClick={() => deleteChanson(chanson.id)} className="text-gray-600 hover:text-red-500 transition-colors">
-                    <Trash2 size={16}/>
-                  </button>
-                )}
+                  {isAdmin && (
+                    <button onClick={() => deleteChanson(chanson.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1">
+                      <Trash2 size={16}/>
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             
             {activeProject?.chansons?.length === 0 && (
               <p className="text-center text-sm text-gray-500 py-8">
-                {isAdmin ? "Aucun titre dans ce projet. Ajoutez votre première maquette !" : "La tracklist n'a pas encore été créée pour ce projet."}
+                {isAdmin ? "Aucun titre dans ce projet. Ajoutez votre première maquette !" : "La tracklist n'a pas encore été créée."}
               </p>
             )}
           </div>
