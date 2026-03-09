@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Folder, Plus, Loader2, FileText, Edit, Trash2, ListMusic, MessageSquare } from 'lucide-react';
+import { Folder, Plus, Loader2, FileText, Edit, Trash2, ListMusic, MessageSquare, UploadCloud, XCircle, Music } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 
@@ -23,6 +23,9 @@ export default function ProjetsPage() {
   const [activeRetoursId, setActiveRetoursId] = useState<string | null>(null);
   const [retoursText, setRetoursText] = useState('');
 
+  // NOUVEAU : État pour le chargement du fichier audio
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
   const [currentArtiste, setCurrentArtiste] = useState<any>(null);
   
   const [formData, setFormData] = useState({
@@ -38,7 +41,6 @@ export default function ProjetsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -47,7 +49,6 @@ export default function ProjetsPage() {
       }
 
       let loggedInArtiste = null;
-      // maybeSingle() évite que l'application plante si l'Admin n'est pas dans la table "artistes"
       const { data } = await supabase.from('artistes').select('id, nom').eq('user_id', session.user.id).maybeSingle();
       if (data) loggedInArtiste = data;
       
@@ -75,9 +76,8 @@ export default function ProjetsPage() {
       if (artistesData) setArtistes(artistesData);
 
     } catch (error) {
-      console.error("Erreur de chargement :", error);
+      console.error("Erreur :", error);
     } finally {
-      // CEINTURE DE SÉCURITÉ : On arrête de tourner !
       setLoading(false);
     }
   };
@@ -105,7 +105,7 @@ export default function ProjetsPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!formData.artiste_id || formData.artiste_id === "") {
+    if (!formData.artiste_id) {
       alert("Veuillez sélectionner un artiste dans la liste !");
       setIsSubmitting(false);
       return;
@@ -114,11 +114,9 @@ export default function ProjetsPage() {
     if (editingId) {
       const { error } = await supabase.from('projets').update(formData).eq('id', editingId);
       if (!error) { setIsModalOpen(false); fetchData(); }
-      else alert("Erreur de modification : " + error.message);
     } else {
       const { error } = await supabase.from('projets').insert([formData]);
       if (!error) { setIsModalOpen(false); fetchData(); }
-      else alert("Erreur de création : " + error.message);
     }
     setIsSubmitting(false);
   };
@@ -143,21 +141,51 @@ export default function ProjetsPage() {
   };
 
   const toggleRetours = (chanson: any) => {
-    if (activeRetoursId === chanson.id) {
-      setActiveRetoursId(null);
-    } else {
-      setActiveRetoursId(chanson.id);
-      setRetoursText(chanson.retours_artiste || '');
-    }
+    if (activeRetoursId === chanson.id) setActiveRetoursId(null);
+    else { setActiveRetoursId(chanson.id); setRetoursText(chanson.retours_artiste || ''); }
   };
 
   const saveRetours = async (id: string) => {
     const { error } = await supabase.from('chansons').update({ retours_artiste: retoursText }).eq('id', id);
-    if (!error) {
-      setActiveRetoursId(null);
-      fetchData();
-    } else {
-      alert("Erreur lors de la sauvegarde.");
+    if (!error) { setActiveRetoursId(null); fetchData(); }
+  };
+
+  // NOUVEAU : Fonction pour envoyer le fichier audio
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, chansonId: string) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingId(chansonId);
+    try {
+      // Création d'un nom unique pour éviter les conflits
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `track_${chansonId}/${fileName}`;
+
+      // Upload dans le "disque dur" Supabase
+      const { error: uploadError } = await supabase.storage.from('maquettes').upload(filePath, file);
+      if (uploadError) throw uploadError;
+
+      // Récupération de l'URL du fichier
+      const { data: { publicUrl } } = supabase.storage.from('maquettes').getPublicUrl(filePath);
+
+      // Sauvegarde du lien dans la base de données
+      const { error: updateError } = await supabase.from('chansons').update({ fichier_audio: publicUrl }).eq('id', chansonId);
+      if (updateError) throw updateError;
+
+      fetchData(); // Rafraîchir pour afficher le lecteur
+    } catch (error: any) {
+      alert("Erreur lors de l'upload : " + error.message);
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  // NOUVEAU : Fonction pour supprimer le fichier audio
+  const deleteAudio = async (chansonId: string) => {
+    if (window.confirm("Voulez-vous vraiment supprimer la maquette de ce titre ?")) {
+      const { error } = await supabase.from('chansons').update({ fichier_audio: '' }).eq('id', chansonId);
+      if (!error) fetchData();
     }
   };
 
@@ -171,7 +199,6 @@ export default function ProjetsPage() {
           <h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">Projets</h1>
           <p className="mt-2 text-gray-400">Gérez les productions, albums et singles.</p>
         </div>
-        
         {isAdmin && (
           <button onClick={openNewModal} className="flex items-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90">
             <Plus size={20} /> Nouveau projet
@@ -216,7 +243,7 @@ export default function ProjetsPage() {
                     <span className="font-bold text-[#4ade80]">{progressPercentage}%</span>
                   </div>
                   <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-gray-800">
-                    <div className="h-full bg-[#4ade80] shadow-[0_0_10px_#4ade80] transition-all" style={{ width: `${progressPercentage}%` }}></div>
+                    <div className="h-full bg-[#4ade80] transition-all" style={{ width: `${progressPercentage}%` }}></div>
                   </div>
                   <button onClick={() => { setActiveProjectId(projet.id); setIsTrackModalOpen(true); }} className="w-full flex items-center justify-center gap-2 rounded bg-white/5 py-2 text-sm font-medium text-white transition-all hover:bg-[#4ade80]/20 hover:text-[#4ade80]">
                     <ListMusic size={16} /> Voir la Tracklist
@@ -231,21 +258,13 @@ export default function ProjetsPage() {
       {/* MODAL : Nouveau Projet */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Modifier le projet" : "Nouveau Projet"}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm text-gray-400">Titre du projet *</label>
-            <input type="text" required value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:outline-none focus:border-[#4ade80]" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-gray-400">Artiste associé *</label>
+          <div><label className="mb-1 block text-sm text-gray-400">Titre du projet *</label><input type="text" required value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:outline-none focus:border-[#4ade80]" /></div>
+          <div><label className="mb-1 block text-sm text-gray-400">Artiste *</label>
             <select required value={formData.artiste_id} onChange={(e) => setFormData({...formData, artiste_id: e.target.value})} className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:outline-none focus:border-[#4ade80] [&>option]:bg-black">
-              <option value="">Sélectionnez un artiste...</option>
-              {artistes.map(a => <option key={a.id} value={a.id}>{a.nom}</option>)}
+              <option value="">Sélectionnez un artiste...</option>{artistes.map(a => <option key={a.id} value={a.id}>{a.nom}</option>)}
             </select>
           </div>
-          <div>
-            <label className="mb-1 block text-sm text-gray-400">Description</label>
-            <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:outline-none focus:border-[#4ade80]" rows={3} />
-          </div>
+          <div><label className="mb-1 block text-sm text-gray-400">Description</label><textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:outline-none focus:border-[#4ade80]" rows={3} /></div>
           <button type="submit" disabled={isSubmitting} className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-2 font-bold text-black hover:bg-[#4ade80]/90">
             {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (editingId ? 'Mettre à jour' : 'Enregistrer')}
           </button>
@@ -263,39 +282,21 @@ export default function ProjetsPage() {
             </form>
           )}
           
-          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
+          <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-2 pb-4">
             {activeProject?.chansons?.map((chanson: any) => (
-              <div key={chanson.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 bg-gray-900/50 p-3 transition-all">
+              <div key={chanson.id} className="flex flex-col rounded-xl border border-gray-800 bg-gray-900/40 p-4 transition-all shadow-sm">
                 
-                {/* Ligne principale du titre */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <span className={`font-medium flex-1 truncate ${chanson.status === 'TERMINÉ' ? 'text-gray-500 line-through' : 'text-white'}`}>
+                  <span className={`font-bold text-lg flex-1 truncate ${chanson.status === 'TERMINÉ' ? 'text-gray-500 line-through' : 'text-white'}`}>
                     {chanson.titre}
                   </span>
                   
                   <div className="flex items-center gap-2">
-                    {/* LE BOUTON RETOURS (Message) */}
-                    <button 
-                      onClick={() => toggleRetours(chanson)} 
-                      className={`p-2 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold ${
-                        chanson.retours_artiste ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                      }`}
-                      title="Notes et Retours"
-                    >
-                      <MessageSquare size={16} />
-                      {chanson.retours_artiste ? 'Notes' : ''}
+                    <button onClick={() => toggleRetours(chanson)} className={`p-2 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold ${chanson.retours_artiste ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}>
+                      <MessageSquare size={16} /> {chanson.retours_artiste ? 'Notes' : ''}
                     </button>
 
-                    <select 
-                      value={chanson.status}
-                      onChange={(e) => updateChansonStatus(chanson.id, e.target.value)}
-                      disabled={!isAdmin}
-                      className={`rounded border px-2 py-1.5 text-xs font-medium focus:outline-none w-full sm:w-auto ${
-                        chanson.status === 'TERMINÉ' ? 'border-[#4ade80] bg-[#4ade80]/10 text-[#4ade80]' : 
-                        chanson.status === 'EN ATTENTE DE CORRECTION DE LA PART DE LARTISTE' ? 'border-orange-500 bg-orange-500/10 text-orange-500' :
-                        'border-gray-700 bg-black text-gray-300 focus:border-[#4ade80]'
-                      } ${!isAdmin ? 'cursor-not-allowed opacity-70' : ''}`}
-                    >
+                    <select value={chanson.status} onChange={(e) => updateChansonStatus(chanson.id, e.target.value)} disabled={!isAdmin} className={`rounded border px-2 py-1.5 text-xs font-bold focus:outline-none w-full sm:w-auto ${chanson.status === 'TERMINÉ' ? 'border-[#4ade80] bg-[#4ade80]/10 text-[#4ade80]' : chanson.status === 'EN ATTENTE DE CORRECTION DE LA PART DE LARTISTE' ? 'border-orange-500 bg-orange-500/10 text-orange-500' : 'border-gray-700 bg-black text-gray-300'} ${!isAdmin ? 'cursor-not-allowed opacity-70' : ''}`}>
                       <option value="ENREGISTREMENT">ENREGISTREMENT</option>
                       <option value="MIXAGE/MASTERING">MIXAGE/MASTERING</option>
                       <option value="EN ATTENTE DE CORRECTION DE LA PART DE LARTISTE">EN ATTENTE DE CORRECTION...</option>
@@ -303,31 +304,51 @@ export default function ProjetsPage() {
                     </select>
 
                     {isAdmin && (
-                      <button onClick={() => deleteChanson(chanson.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1">
-                        <Trash2 size={16}/>
-                      </button>
+                      <button onClick={() => deleteChanson(chanson.id)} className="text-gray-600 hover:text-red-500 p-1"><Trash2 size={18}/></button>
                     )}
                   </div>
                 </div>
 
-                {/* LA ZONE DE TEXTE DÉROULANTE (Carnet de notes) */}
+                {/* ZONE AUDIO (LE LECTEUR 🎧) */}
+                <div className="mt-4 flex items-center gap-3 rounded-lg bg-black/60 p-3 border border-gray-800/50">
+                  {chanson.fichier_audio ? (
+                    <div className="flex w-full items-center gap-3">
+                      <Music size={20} className="text-[#a855f7] shrink-0 ml-1" />
+                      <audio controls className="h-10 w-full outline-none [&::-webkit-media-controls-panel]:bg-gray-800 [&::-webkit-media-controls-current-time-display]:text-white [&::-webkit-media-controls-time-remaining-display]:text-white">
+                        <source src={chanson.fichier_audio} type="audio/mpeg" />
+                        <source src={chanson.fichier_audio} type="audio/wav" />
+                        Votre navigateur ne supporte pas le lecteur audio.
+                      </audio>
+                      {isAdmin && (
+                        <button onClick={() => deleteAudio(chanson.id)} className="p-2 text-gray-500 hover:text-red-500 transition-colors" title="Supprimer l'audio">
+                          <XCircle size={20} />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    isAdmin ? (
+                      <div className="flex w-full items-center justify-between px-2">
+                        <span className="text-sm text-gray-500">Aucun fichier audio</span>
+                        <label className="flex cursor-pointer items-center gap-2 rounded-lg bg-white/5 px-4 py-2 text-sm font-bold text-gray-300 transition-all hover:bg-white/10 hover:text-white border border-gray-700 hover:border-gray-500">
+                          {uploadingId === chanson.id ? <Loader2 size={16} className="animate-spin text-[#4ade80]" /> : <UploadCloud size={16} className="text-[#4ade80]" />}
+                          {uploadingId === chanson.id ? 'Envoi en cours...' : 'Uploader le Mix'}
+                          <input type="file" accept="audio/mpeg, audio/wav" className="hidden" onChange={(e) => handleFileUpload(e, chanson.id)} disabled={uploadingId === chanson.id} />
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="px-2 text-sm text-gray-600 italic">Maquette en cours de préparation au studio...</div>
+                    )
+                  )}
+                </div>
+
+                {/* LA ZONE DE RETOURS */}
                 {activeRetoursId === chanson.id && (
-                  <div className="mt-2 border-t border-gray-800 pt-3 flex flex-col gap-2 animate-in slide-in-from-top-2">
+                  <div className="mt-3 border-t border-gray-800 pt-3 flex flex-col gap-2 animate-in slide-in-from-top-2">
                     <label className="text-xs text-gray-400">Notes / Retours sur le mixage :</label>
-                    <textarea
-                      value={retoursText}
-                      onChange={(e) => setRetoursText(e.target.value)}
-                      rows={4}
-                      placeholder={isAdmin ? "Les retours de l'artiste s'afficheront ici..." : "Ex: 0:45 - Baisser un peu la charley, 1:20 - Monter ma voix..."}
-                      className="w-full rounded-lg bg-black/50 border border-gray-700 p-3 text-sm text-white focus:border-orange-500 focus:outline-none"
-                    />
+                    <textarea value={retoursText} onChange={(e) => setRetoursText(e.target.value)} rows={3} placeholder={isAdmin ? "Les retours s'afficheront ici..." : "Ex: 0:45 - Baisser un peu la charley..."} className="w-full rounded-lg bg-black/50 border border-gray-700 p-3 text-sm text-white focus:border-orange-500 focus:outline-none" />
                     <div className="flex justify-end gap-2 mt-1">
-                      <button onClick={() => setActiveRetoursId(null)} className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">
-                        Annuler
-                      </button>
-                      <button onClick={() => saveRetours(chanson.id)} className="rounded bg-orange-500 px-4 py-1.5 text-xs font-bold text-black hover:bg-orange-600 transition-all">
-                        Enregistrer
-                      </button>
+                      <button onClick={() => setActiveRetoursId(null)} className="px-3 py-1.5 text-xs text-gray-400 hover:text-white">Annuler</button>
+                      <button onClick={() => saveRetours(chanson.id)} className="rounded bg-orange-500 px-4 py-1.5 text-xs font-bold text-black hover:bg-orange-600">Enregistrer</button>
                     </div>
                   </div>
                 )}
