@@ -1,9 +1,11 @@
 "use client";
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [role, setRole] = useState<'ADMIN' | 'ARTISTE' | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -19,42 +21,53 @@ export default function DashboardPage() {
   }, []);
 
   async function fetchDashboardData() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    const { data: artiste } = await supabase.from('artistes').select('*').eq('user_id', session.user.id).single();
-
-    if (artiste) {
-      setRole('ARTISTE');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
       
-      const { data: projets } = await supabase.from('projets').select('*, chansons(*)').eq('artiste_id', artiste.id);
-      
-      const { data: sessions } = await supabase
-        .from('sessions')
-        .select('*, projets!inner(artiste_id, title)')
-        .eq('projets.artiste_id', artiste.id)
-        .gte('date', new Date().toISOString())
-        .order('date', { ascending: true })
-        .limit(3);
-
-      setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: sessions || [] });
-
-    } else {
-      setRole('ADMIN');
-      const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
-      const { count: projetsCount } = await supabase.from('projets').select('*', { count: 'exact', head: true });
-      const { count: sessionsCount, data: sessionsData } = await supabase.from('sessions').select('*, projets(title, artistes(nom))', { count: 'exact' }).order('date', { ascending: false }).limit(5);
-      const { data: financesData } = await supabase.from('finances').select('amount, type');
-      
-      let totalRevenus = 0;
-      if (financesData) {
-        totalRevenus = financesData.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount), 0);
+      // Si personne n'est connecté, on renvoie vers le login et on arrête le chargement
+      if (!session) {
+        router.push('/login');
+        return;
       }
 
-      setAdminStats({ artistes: artistesCount || 0, projets: projetsCount || 0, sessions: sessionsCount || 0, revenus: totalRevenus });
-      if (sessionsData) setAdminRecentSessions(sessionsData);
+      const { data: artiste } = await supabase.from('artistes').select('*').eq('user_id', session.user.id).single();
+
+      if (artiste) {
+        setRole('ARTISTE');
+        
+        const { data: projets } = await supabase.from('projets').select('*, chansons(*)').eq('artiste_id', artiste.id);
+        
+        const { data: sessions } = await supabase
+          .from('sessions')
+          .select('*, projets!inner(artiste_id, title)')
+          .eq('projets.artiste_id', artiste.id)
+          .gte('date', new Date().toISOString())
+          .order('date', { ascending: true })
+          .limit(3);
+
+        setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: sessions || [] });
+
+      } else {
+        setRole('ADMIN');
+        const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
+        const { count: projetsCount } = await supabase.from('projets').select('*', { count: 'exact', head: true });
+        const { count: sessionsCount, data: sessionsData } = await supabase.from('sessions').select('*, projets(title, artistes(nom))', { count: 'exact' }).order('date', { ascending: false }).limit(5);
+        const { data: financesData } = await supabase.from('finances').select('amount, type');
+        
+        let totalRevenus = 0;
+        if (financesData) {
+          totalRevenus = financesData.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount), 0);
+        }
+
+        setAdminStats({ artistes: artistesCount || 0, projets: projetsCount || 0, sessions: sessionsCount || 0, revenus: totalRevenus });
+        if (sessionsData) setAdminRecentSessions(sessionsData);
+      }
+    } catch (error) {
+      console.error("Erreur de chargement des données :", error);
+    } finally {
+      // CEINTURE DE SÉCURITÉ : Quoi qu'il arrive (succès ou erreur), on éteint le cercle de chargement !
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   const formatDate = (dateString: string) => {
@@ -87,7 +100,6 @@ export default function DashboardPage() {
             ) : (
               artisteData.projets.map(projet => {
                 const totalSongs = projet.chansons?.length || 0;
-                // MISE À JOUR ICI : On compte les chansons "TERMINÉ"
                 const completedSongs = projet.chansons?.filter((c: any) => c.status === 'TERMINÉ').length || 0;
                 const progressPercentage = totalSongs === 0 ? 0 : Math.round((completedSongs / totalSongs) * 100);
 
