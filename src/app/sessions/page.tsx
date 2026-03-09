@@ -11,8 +11,6 @@ export default function SessionsPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // NOUVEAU : Gestion du mode édition
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -28,11 +26,32 @@ export default function SessionsPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const { data: sessionsData } = await supabase.from('sessions').select('*').order('date', { ascending: false });
-    const { data: projetsData } = await supabase.from('projets').select('id, title').order('title', { ascending: true });
+
+    // 1. Qui est connecté ?
+    const { data: { session } } = await supabase.auth.getSession();
+    let loggedInArtiste = null;
+    
+    if (session) {
+      const { data } = await supabase.from('artistes').select('id').eq('user_id', session.user.id).single();
+      if (data) loggedInArtiste = data;
+    }
+
+    // 2. Préparation (On utilise une astuce SQL "inner" pour lier les sessions à l'artiste)
+    let sessionsQuery = supabase.from('sessions').select('*, projets!inner(title, artiste_id)').order('date', { ascending: false });
+    let projetsQuery = supabase.from('projets').select('id, title, artiste_id').order('title', { ascending: true });
+
+    // 3. LE FILTRE SECRET
+    if (loggedInArtiste) {
+      sessionsQuery = sessionsQuery.eq('projets.artiste_id', loggedInArtiste.id);
+      projetsQuery = projetsQuery.eq('artiste_id', loggedInArtiste.id);
+    }
+
+    const { data: sessionsData } = await sessionsQuery;
+    const { data: projetsData } = await projetsQuery;
     
     if (sessionsData) setSessions(sessionsData);
     if (projetsData) setProjets(projetsData);
+    
     setLoading(false);
   };
 
@@ -42,9 +61,7 @@ export default function SessionsPage() {
     setIsModalOpen(true);
   };
 
-  // NOUVEAU : Fonction pour éditer (formate la date pour l'input datetime-local)
   const handleEditClick = (session: any) => {
-    // Convertir la date Supabase pour l'affichage dans le formulaire
     const dateObj = new Date(session.date);
     const tzOffset = dateObj.getTimezoneOffset() * 60000; 
     const localISOTime = (new Date(dateObj.getTime() - tzOffset)).toISOString().slice(0,16);
@@ -59,7 +76,6 @@ export default function SessionsPage() {
     setIsModalOpen(true);
   };
 
-  // NOUVEAU : Fonction pour supprimer
   const handleDelete = async (id: string, title: string) => {
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer la session "${title}" ?`)) {
       const { error } = await supabase.from('sessions').delete().eq('id', id);
@@ -72,25 +88,16 @@ export default function SessionsPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    const sessionDataToSave = {
-      ...formData,
-      date: new Date(formData.date).toISOString(),
-    };
+    const sessionDataToSave = { ...formData, date: new Date(formData.date).toISOString() };
     
     if (editingId) {
-      // MODIFICATION
       const { error } = await supabase.from('sessions').update(sessionDataToSave).eq('id', editingId);
-      if (!error) {
-        setIsModalOpen(false);
-        fetchData();
-      } else alert("Erreur lors de la modification.");
+      if (!error) { setIsModalOpen(false); fetchData(); }
+      else alert("Erreur lors de la modification.");
     } else {
-      // CRÉATION
       const { error } = await supabase.from('sessions').insert([sessionDataToSave]);
-      if (!error) {
-        setIsModalOpen(false);
-        fetchData();
-      } else alert("Erreur lors de la création.");
+      if (!error) { setIsModalOpen(false); fetchData(); }
+      else alert("Erreur lors de la création.");
     }
     setIsSubmitting(false);
   };
@@ -134,20 +141,13 @@ export default function SessionsPage() {
           {sessions.map((session) => (
             <div key={session.id} className="group relative rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 transition-all hover:border-[#4ade80]/80 hover:shadow-[0_0_15px_rgba(74,222,128,0.2)]">
               
-              {/* Boutons cachés Edit / Delete */}
               <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                <button onClick={() => handleEditClick(session)} className="rounded p-2 text-gray-400 hover:bg-[#4ade80]/20 hover:text-[#4ade80]">
-                  <Edit size={16} />
-                </button>
-                <button onClick={() => handleDelete(session.id, session.title)} className="rounded p-2 text-gray-400 hover:bg-red-500/20 hover:text-red-500">
-                  <Trash2 size={16} />
-                </button>
+                <button onClick={() => handleEditClick(session)} className="rounded p-2 text-gray-400 hover:bg-[#4ade80]/20 hover:text-[#4ade80]"><Edit size={16} /></button>
+                <button onClick={() => handleDelete(session.id, session.title)} className="rounded p-2 text-gray-400 hover:bg-red-500/20 hover:text-red-500"><Trash2 size={16} /></button>
               </div>
 
               <div className="mb-4 flex items-center gap-3 pr-16">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#4ade80]/20 text-[#4ade80]">
-                  <Mic2 size={24} />
-                </div>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#4ade80]/20 text-[#4ade80]"><Mic2 size={24} /></div>
                 <div>
                   <h3 className="truncate text-xl font-bold text-white">{session.title}</h3>
                   <span className="flex items-center gap-1 text-sm font-medium text-[#4ade80]"><Folder size={14} /> {getProjectName(session.project_id)}</span>
@@ -170,7 +170,6 @@ export default function SessionsPage() {
         </div>
       )}
 
-      {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Modifier la session" : "Nouvelle Session"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
