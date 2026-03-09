@@ -12,6 +12,9 @@ export default function SessionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // On stocke l'artiste connecté
+  const [currentArtiste, setCurrentArtiste] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -27,7 +30,6 @@ export default function SessionsPage() {
   const fetchData = async () => {
     setLoading(true);
 
-    // 1. Qui est connecté ?
     const { data: { session } } = await supabase.auth.getSession();
     let loggedInArtiste = null;
     
@@ -35,12 +37,12 @@ export default function SessionsPage() {
       const { data } = await supabase.from('artistes').select('id').eq('user_id', session.user.id).single();
       if (data) loggedInArtiste = data;
     }
+    
+    setCurrentArtiste(loggedInArtiste);
 
-    // 2. Préparation (On utilise une astuce SQL "inner" pour lier les sessions à l'artiste)
     let sessionsQuery = supabase.from('sessions').select('*, projets!inner(title, artiste_id)').order('date', { ascending: false });
     let projetsQuery = supabase.from('projets').select('id, title, artiste_id').order('title', { ascending: true });
 
-    // 3. LE FILTRE SECRET
     if (loggedInArtiste) {
       sessionsQuery = sessionsQuery.eq('projets.artiste_id', loggedInArtiste.id);
       projetsQuery = projetsQuery.eq('artiste_id', loggedInArtiste.id);
@@ -80,7 +82,6 @@ export default function SessionsPage() {
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer la session "${title}" ?`)) {
       const { error } = await supabase.from('sessions').delete().eq('id', id);
       if (!error) fetchData();
-      else alert("Erreur lors de la suppression.");
     }
   };
 
@@ -93,11 +94,9 @@ export default function SessionsPage() {
     if (editingId) {
       const { error } = await supabase.from('sessions').update(sessionDataToSave).eq('id', editingId);
       if (!error) { setIsModalOpen(false); fetchData(); }
-      else alert("Erreur lors de la modification.");
     } else {
       const { error } = await supabase.from('sessions').insert([sessionDataToSave]);
       if (!error) { setIsModalOpen(false); fetchData(); }
-      else alert("Erreur lors de la création.");
     }
     setIsSubmitting(false);
   };
@@ -112,6 +111,9 @@ export default function SessionsPage() {
     return new Date(dateString).toLocaleDateString('fr-FR', options);
   };
 
+  // Variable de sécurité simple
+  const isAdmin = !currentArtiste;
+
   return (
     <div className="p-8">
       <div className="mb-8 flex items-center justify-between">
@@ -119,13 +121,17 @@ export default function SessionsPage() {
           <h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
             Sessions
           </h1>
-          <p className="mt-2 text-gray-400">Gérez vos heures d'enregistrement et de mixage.</p>
+          <p className="mt-2 text-gray-400">
+            {isAdmin ? "Gérez vos heures d'enregistrement et de mixage." : "Consultez le calendrier de vos prochaines sessions prévues."}
+          </p>
         </div>
         
-        <button onClick={openNewModal} className="flex items-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 hover:shadow-[0_0_15px_rgba(74,222,128,0.4)]">
-          <Plus size={20} />
-          Nouvelle session
-        </button>
+        {/* LE BOUTON N'EST VISIBLE QUE POUR L'ADMIN */}
+        {isAdmin && (
+          <button onClick={openNewModal} className="flex items-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 hover:shadow-[0_0_15px_rgba(74,222,128,0.4)]">
+            <Plus size={20} /> Nouvelle session
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -134,17 +140,20 @@ export default function SessionsPage() {
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-8 text-center shadow-[0_0_15px_rgba(74,222,128,0.1)]">
           <Mic2 className="mx-auto mb-4 text-[#4ade80]/50" size={48} />
           <h3 className="mb-2 text-xl font-bold text-white">Aucune session prévue</h3>
-          <p className="text-gray-400">Planifiez votre première session de studio.</p>
+          <p className="text-gray-400">{isAdmin ? "Planifiez votre première session de studio." : "Vous n'avez pas encore de session planifiée avec le studio."}</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sessions.map((session) => (
             <div key={session.id} className="group relative rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 transition-all hover:border-[#4ade80]/80 hover:shadow-[0_0_15px_rgba(74,222,128,0.2)]">
               
-              <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                <button onClick={() => handleEditClick(session)} className="rounded p-2 text-gray-400 hover:bg-[#4ade80]/20 hover:text-[#4ade80]"><Edit size={16} /></button>
-                <button onClick={() => handleDelete(session.id, session.title)} className="rounded p-2 text-gray-400 hover:bg-red-500/20 hover:text-red-500"><Trash2 size={16} /></button>
-              </div>
+              {/* LES BOUTONS MODIFIER/SUPPRIMER SONT CACHÉS POUR LES ARTISTES */}
+              {isAdmin && (
+                <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                  <button onClick={() => handleEditClick(session)} className="rounded p-2 text-gray-400 hover:bg-[#4ade80]/20 hover:text-[#4ade80]"><Edit size={16} /></button>
+                  <button onClick={() => handleDelete(session.id, session.title)} className="rounded p-2 text-gray-400 hover:bg-red-500/20 hover:text-red-500"><Trash2 size={16} /></button>
+                </div>
+              )}
 
               <div className="mb-4 flex items-center gap-3 pr-16">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#4ade80]/20 text-[#4ade80]"><Mic2 size={24} /></div>
@@ -170,6 +179,7 @@ export default function SessionsPage() {
         </div>
       )}
 
+      {/* Le Modal n'est de toute façon accessible que par l'admin qui peut cliquer le bouton */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Modifier la session" : "Nouvelle Session"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
