@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, Folder, Mic2, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Folder, Mic2, LogOut, UserCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
@@ -57,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     { name: "Artistes", href: "/artistes", icon: Users, adminOnly: true },
     { name: "Projets", href: "/projets", icon: Folder, adminOnly: false },
     { name: "Sessions", href: "/sessions", icon: Mic2, adminOnly: false },
+    { name: "Profil", href: "/profil", icon: UserCircle, adminOnly: false },
   ].filter(item => !item.adminOnly || isAdmin); // Le "videur" qui filtre le tableau !
 
   return (
