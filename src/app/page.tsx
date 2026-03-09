@@ -22,21 +22,18 @@ export default function DashboardPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    // On vérifie si c'est un artiste
     const { data: artiste } = await supabase.from('artistes').select('*').eq('user_id', session.user.id).single();
 
     if (artiste) {
       setRole('ARTISTE');
-      // --- CHARGEMENT DES DONNÉES ARTISTE ---
-      // 1. Ses projets avec les chansons liées
+      
       const { data: projets } = await supabase.from('projets').select('*, chansons(*)').eq('artiste_id', artiste.id);
       
-      // 2. Ses sessions futures uniquement
       const { data: sessions } = await supabase
         .from('sessions')
         .select('*, projets!inner(artiste_id, title)')
         .eq('projets.artiste_id', artiste.id)
-        .gte('date', new Date().toISOString()) // Uniquement les sessions à venir
+        .gte('date', new Date().toISOString())
         .order('date', { ascending: true })
         .limit(3);
 
@@ -44,7 +41,6 @@ export default function DashboardPage() {
 
     } else {
       setRole('ADMIN');
-      // --- CHARGEMENT DES DONNÉES ADMIN --- (Ton ancien code)
       const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
       const { count: projetsCount } = await supabase.from('projets').select('*', { count: 'exact', head: true });
       const { count: sessionsCount, data: sessionsData } = await supabase.from('sessions').select('*, projets(title, artistes(nom))', { count: 'exact' }).order('date', { ascending: false }).limit(5);
@@ -70,7 +66,7 @@ export default function DashboardPage() {
   }
 
   // ==========================================
-  // VUE 1 : L'ESPACE ARTISTE (Le suivi de projet)
+  // VUE 1 : L'ESPACE ARTISTE
   // ==========================================
   if (role === 'ARTISTE') {
     return (
@@ -83,7 +79,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {/* Colonne Gauche : Les Projets (2/3 de l'espace) */}
           <div className="lg:col-span-2 space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2"><Folder className="text-[#a855f7]" size={20}/> Mes Projets en cours</h2>
             
@@ -92,7 +87,8 @@ export default function DashboardPage() {
             ) : (
               artisteData.projets.map(projet => {
                 const totalSongs = projet.chansons?.length || 0;
-                const completedSongs = projet.chansons?.filter((c: any) => c.status === 'Terminé').length || 0;
+                // MISE À JOUR ICI : On compte les chansons "TERMINÉ"
+                const completedSongs = projet.chansons?.filter((c: any) => c.status === 'TERMINÉ').length || 0;
                 const progressPercentage = totalSongs === 0 ? 0 : Math.round((completedSongs / totalSongs) * 100);
 
                 return (
@@ -102,7 +98,6 @@ export default function DashboardPage() {
                       <span className="text-[#a855f7] font-bold">{progressPercentage}%</span>
                     </div>
                     
-                    {/* La Barre de progression Néon */}
                     <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-gray-800">
                       <div className="h-full bg-[#a855f7] shadow-[0_0_10px_#a855f7] transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
                     </div>
@@ -117,7 +112,6 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Colonne Droite : Les prochaines sessions (1/3 de l'espace) */}
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2"><Clock className="text-[#a855f7]" size={20}/> Prochaines Sessions</h2>
             
@@ -143,7 +137,7 @@ export default function DashboardPage() {
   }
 
   // ==========================================
-  // VUE 2 : L'ESPACE ADMIN (Le code que tu avais déjà)
+  // VUE 2 : L'ESPACE ADMIN
   // ==========================================
   return (
     <div className="p-8">
