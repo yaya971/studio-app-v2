@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Folder, Plus, Loader2, FileText, Edit, Trash2, ListMusic, MessageSquare, UploadCloud, XCircle, PlayCircle } from 'lucide-react';
+import { Folder, Plus, Loader2, FileText, Edit, Trash2, ListMusic, MessageSquare, UploadCloud, XCircle, PlayCircle, MapPin } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 
@@ -141,6 +141,29 @@ export default function ProjetsPage() {
     }
   };
 
+  // NOUVEAU : LA FONCTION MAGIQUE DU TIMECODE
+  const handleAddTimestamp = (chanson: any) => {
+    // 1. On cherche le lecteur audio exact de cette chanson
+    const audioElement = document.getElementById(`audio-${chanson.id}`) as HTMLAudioElement;
+    let currentTimeStr = "00:00";
+
+    // 2. S'il est en train de lire, on capture le temps exact
+    if (audioElement) {
+      const time = Math.floor(audioElement.currentTime);
+      const minutes = Math.floor(time / 60);
+      const seconds = time % 60;
+      currentTimeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    // 3. On ouvre le panneau de retours s'il était fermé
+    setActiveRetoursId(chanson.id);
+
+    // 4. On ajoute le timecode proprement sans effacer ce qui était déjà écrit
+    const baseText = activeRetoursId === chanson.id ? retoursText : (chanson.retours_artiste || '');
+    const separator = baseText.trim() === '' ? '' : '\n';
+    setRetoursText(`${baseText}${separator}[${currentTimeStr}] - `);
+  };
+
   const activeProject = projets.find(p => p.id === activeProjectId);
   const isAdmin = !currentArtiste;
 
@@ -237,7 +260,6 @@ export default function ProjetsPage() {
                 
                 {chanson.status === 'TERMINÉ' && <div className="absolute left-0 top-0 h-full w-1.5 bg-[#4ade80] shadow-[0_0_10px_#4ade80]"></div>}
                 
-                {/* EN-TÊTE : Titre + Statut */}
                 <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h4 className={`flex items-center gap-3 text-lg font-bold min-w-0 ${chanson.status === 'TERMINÉ' ? 'text-gray-400' : 'text-white'}`}>
                     <PlayCircle size={22} className={`shrink-0 ${chanson.fichier_audio ? "text-[#a855f7]" : "text-gray-600"}`} />
@@ -252,20 +274,31 @@ export default function ProjetsPage() {
                   </select>
                 </div>
 
-                {/* ZONE CENTRALE : Audio ou Upload */}
                 <div className="my-4">
                   {chanson.fichier_audio ? (
-                    <div className="flex w-full items-center gap-3 rounded-xl border border-gray-700 bg-black p-2 sm:p-3 shadow-inner">
-                      {/* FIX LECTEUR : Le [color-scheme:dark] force les boutons en blanc */}
-                      <audio controls className="h-10 w-full outline-none [color-scheme:dark] bg-transparent rounded-lg">
-                        <source src={chanson.fichier_audio} type="audio/mpeg" />
-                        <source src={chanson.fichier_audio} type="audio/wav" />
-                      </audio>
-                      {isAdmin && (
-                        <button onClick={() => deleteAudio(chanson.id)} className="shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-500/20 hover:text-red-500" title="Supprimer l'audio">
-                          <Trash2 size={20} />
+                    <div className="flex flex-col gap-2 rounded-xl border border-gray-700 bg-black p-3 shadow-inner">
+                      <div className="flex w-full items-center gap-2">
+                        {/* IDENTIFIANT AUDIO AJOUTÉ ICI POUR LA MAGIE */}
+                        <audio id={`audio-${chanson.id}`} controls className="h-10 w-full outline-none [color-scheme:dark] bg-transparent rounded-lg">
+                          <source src={chanson.fichier_audio} type="audio/mpeg" />
+                          <source src={chanson.fichier_audio} type="audio/wav" />
+                        </audio>
+                        {isAdmin && (
+                          <button onClick={() => deleteAudio(chanson.id)} className="shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-500/20 hover:text-red-500" title="Supprimer l'audio">
+                            <Trash2 size={20} />
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* NOUVEAU BOUTON : LE TIMECODE */}
+                      <div className="flex justify-end px-1">
+                        <button 
+                          onClick={() => handleAddTimestamp(chanson)}
+                          className="flex items-center gap-1.5 text-xs font-bold text-[#a855f7] hover:text-white transition-colors bg-[#a855f7]/10 hover:bg-[#a855f7]/30 px-3 py-1.5 rounded-full"
+                        >
+                          <MapPin size={14} /> Épingler une note ici
                         </button>
-                      )}
+                      </div>
                     </div>
                   ) : (
                     isAdmin ? (
@@ -285,7 +318,6 @@ export default function ProjetsPage() {
                   )}
                 </div>
 
-                {/* PIED DE CARTE : Boutons Actions */}
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-t border-gray-800 pt-4">
                   <button onClick={() => toggleRetours(chanson)} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all ${chanson.retours_artiste ? 'bg-orange-500/10 text-orange-500 border border-orange-500/30 hover:bg-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'}`}>
                     <MessageSquare size={16} /> {chanson.retours_artiste ? 'Voir les retours' : 'Ajouter une note'}
@@ -298,11 +330,11 @@ export default function ProjetsPage() {
                   )}
                 </div>
 
-                {/* ZONE DE TEXTE DÉROULANTE (Retours) */}
                 {activeRetoursId === chanson.id && (
                   <div className="mt-4 animate-in slide-in-from-top-2 rounded-xl bg-black p-4 border border-gray-800 shadow-inner">
                     <label className="mb-2 block text-xs font-bold text-gray-400 uppercase tracking-wider">Notes de mixage</label>
-                    <textarea value={retoursText} onChange={(e) => setRetoursText(e.target.value)} rows={3} placeholder={isAdmin ? "Les notes du client apparaîtront ici..." : "Ex: 0:45 - Baisser un peu la charley..."} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-sm text-white focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all" />
+                    {/* LE TEXTAREA OÙ LE TIMECODE S'AJOUTE */}
+                    <textarea value={retoursText} onChange={(e) => setRetoursText(e.target.value)} rows={4} placeholder={isAdmin ? "Les notes du client apparaîtront ici..." : "Ex: 0:45 - Baisser un peu la charley..."} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-sm text-white focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all" />
                     <div className="mt-3 flex justify-end gap-2">
                       <button onClick={() => setActiveRetoursId(null)} className="rounded-lg px-4 py-2 text-xs font-bold text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">Fermer</button>
                       <button onClick={() => saveRetours(chanson.id)} className="rounded-lg bg-orange-500 px-5 py-2 text-xs font-bold text-black transition-all hover:bg-orange-600 hover:shadow-[0_0_10px_rgba(249,115,22,0.4)]">Enregistrer</button>
