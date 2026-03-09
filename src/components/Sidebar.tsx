@@ -1,107 +1,101 @@
 "use client";
+
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, Folder, Mic2, Wallet, LogOut, Loader2 } from 'lucide-react';
+import { Grid, Users, Folder, Mic2, Wallet, LogOut } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<'ADMIN' | 'ARTISTE' | null>(null);
 
-  // Vérifier le rôle de l'utilisateur à la connexion
   useEffect(() => {
-    async function getUserRole() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        // On va chercher le rôle dans notre table 'users'
-        const { data } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        
-        setRole(data?.role || 'artiste'); // Par défaut on est artiste
-      }
-      setLoading(false);
-    }
-    getUserRole();
+    checkUserRole();
   }, []);
+
+  const checkUserRole = async () => {
+    // 1. On regarde qui est connecté
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    // 2. On cherche si cet utilisateur est rangé dans ton répertoire "Artistes"
+    const { data: artiste } = await supabase
+      .from('artistes')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .single();
+
+    // 3. Si on le trouve, c'est un Artiste. Sinon, c'est toi (Admin) !
+    if (artiste) {
+      setRole('ARTISTE');
+    } else {
+      setRole('ADMIN');
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
+    router.refresh();
   };
 
-  // On affiche un chargeur pendant qu'on vérifie l'identité
-  if (loading) {
-    return (
-      <div className="flex h-screen w-64 flex-col items-center justify-center border-r border-[#4ade80]/30 bg-black">
-        <Loader2 className="animate-spin text-[#4ade80]" size={32} />
-      </div>
-    );
-  }
+  // On attend de savoir qui c'est avant d'afficher le menu
+  if (!role) return <div className="flex h-screen w-64 flex-col border-r border-gray-800 bg-black/50 p-6" />;
 
-  // Le menu de base que tout le monde peut voir
-  const baseMenu = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Projets', path: '/projets', icon: Folder },
-    { name: 'Sessions', path: '/sessions', icon: Mic2 },
+  // La liste des boutons avec leurs autorisations !
+  const navItems = [
+    { name: 'Dashboard', path: '/', icon: Grid, allowed: ['ADMIN', 'ARTISTE'] },
+    { name: 'Artistes', path: '/artistes', icon: Users, allowed: ['ADMIN'] }, // Seul l'admin voit ça
+    { name: 'Projets', path: '/projets', icon: Folder, allowed: ['ADMIN', 'ARTISTE'] },
+    { name: 'Sessions', path: '/sessions', icon: Mic2, allowed: ['ADMIN', 'ARTISTE'] },
+    { name: 'Finances', path: '/finances', icon: Wallet, allowed: ['ADMIN'] }, // Seul l'admin voit ça
   ];
-
-  // Le menu secret réservé à l'Admin
-  const adminMenu = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Artistes', path: '/artistes', icon: Users },
-    { name: 'Projets', path: '/projets', icon: Folder },
-    { name: 'Sessions', path: '/sessions', icon: Mic2 },
-    { name: 'Finances', path: '/finances', icon: Wallet },
-  ];
-
-  // On choisit le bon menu selon le rôle
-  const menuToDisplay = role === 'admin' ? adminMenu : baseMenu;
 
   return (
-    <div className="flex h-screen w-64 flex-col border-r border-[#4ade80]/30 bg-black p-4 shadow-[4px_0_24px_rgba(74,222,128,0.1)]">
-      <div className="mb-8 p-2">
-        <h1 className="text-2xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
+    <div className="flex h-screen w-64 flex-col border-r border-gray-800 bg-black/50 p-6">
+      <div className="mb-10">
+        <h2 className="text-2xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
           STUDIO V2
-        </h1>
-        {/* Petit badge pour indiquer le rôle */}
-        <span className="mt-1 inline-block rounded-full border border-[#4ade80]/50 bg-[#4ade80]/10 px-2 py-0.5 text-xs text-[#4ade80] uppercase tracking-wider">
+        </h2>
+        {/* Le badge change de couleur selon le rôle ! */}
+        <div className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold border ${
+          role === 'ADMIN' 
+            ? 'border-[#4ade80] text-[#4ade80] bg-[#4ade80]/10' 
+            : 'border-[#a855f7] text-[#a855f7] bg-[#a855f7]/10'
+        }`}>
           {role}
-        </span>
+        </div>
       </div>
-      
+
       <nav className="flex-1 space-y-2">
-        {menuToDisplay.map((item) => {
-          const Icon = item.icon;
+        {navItems.filter(item => item.allowed.includes(role)).map((item) => {
           const isActive = pathname === item.path;
+          const Icon = item.icon;
           return (
             <Link
               key={item.name}
               href={item.path}
               className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-all ${
                 isActive 
-                  ? 'bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_10px_rgba(74,222,128,0.2)]' 
-                  : 'text-gray-400 hover:bg-[#4ade80]/5 hover:text-[#4ade80]'
+                  ? 'bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/30' 
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
               }`}
             >
               <Icon size={20} />
-              <span>{item.name}</span>
+              {item.name}
             </Link>
           );
         })}
       </nav>
 
       <button 
-        onClick={handleLogout}
+        onClick={handleLogout} 
         className="mt-auto flex items-center gap-3 rounded-lg px-4 py-3 text-gray-400 transition-all hover:bg-red-500/10 hover:text-red-500"
       >
         <LogOut size={20} />
-        <span>Déconnexion</span>
+        Déconnexion
       </button>
     </div>
   );
