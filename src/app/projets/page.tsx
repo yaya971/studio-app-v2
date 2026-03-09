@@ -10,12 +10,10 @@ export default function ProjetsPage() {
   const [artistes, setArtistes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // États pour le Projet
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // NOUVEAU : États pour la Tracklist
   const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [newSongTitle, setNewSongTitle] = useState('');
@@ -43,7 +41,6 @@ export default function ProjetsPage() {
     }
     setCurrentArtiste(loggedInArtiste);
 
-    // On récupère les projets ET on inclut leurs chansons
     let projetsQuery = supabase.from('projets').select('*, artistes(nom), chansons(*)').order('created_at', { ascending: false });
     let artistesQuery = supabase.from('artistes').select('id, nom').order('nom', { ascending: true });
 
@@ -56,7 +53,6 @@ export default function ProjetsPage() {
     const { data: artistesData } = await artistesQuery;
     
     if (projetsData) {
-      // On trie les chansons de la plus ancienne à la plus récente
       projetsData.forEach(p => {
         if (p.chansons) {
           p.chansons.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -69,7 +65,6 @@ export default function ProjetsPage() {
     setLoading(false);
   };
 
-  // --- ACTIONS PROJETS ---
   const openNewModal = () => {
     setFormData({ title: '', description: '', artiste_id: currentArtiste ? currentArtiste.id : '' });
     setEditingId(null);
@@ -102,7 +97,6 @@ export default function ProjetsPage() {
     setIsSubmitting(false);
   };
 
-  // --- ACTIONS CHANSONS (TRACKLIST) ---
   const addChanson = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSongTitle || !activeProjectId) return;
@@ -110,13 +104,13 @@ export default function ProjetsPage() {
     const { error } = await supabase.from('chansons').insert([{ titre: newSongTitle, project_id: activeProjectId }]);
     if (!error) {
       setNewSongTitle('');
-      fetchData(); // On recharge les données pour afficher le nouveau titre
+      fetchData();
     }
   };
 
   const updateChansonStatus = async (id: string, newStatus: string) => {
     const { error } = await supabase.from('chansons').update({ status: newStatus }).eq('id', id);
-    if (!error) fetchData(); // On recharge pour mettre à jour la barre de progression
+    if (!error) fetchData();
   };
 
   const deleteChanson = async (id: string) => {
@@ -127,6 +121,7 @@ export default function ProjetsPage() {
   };
 
   const activeProject = projets.find(p => p.id === activeProjectId);
+  const isAdmin = !currentArtiste; // Variable simple pour savoir si on est l'admin
 
   return (
     <div className="p-8">
@@ -153,7 +148,6 @@ export default function ProjetsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projets.map((projet) => {
-            // Calcul de la progression
             const totalSongs = projet.chansons?.length || 0;
             const completedSongs = projet.chansons?.filter((c: any) => c.status === 'Terminé').length || 0;
             const progressPercentage = totalSongs === 0 ? 0 : Math.round((completedSongs / totalSongs) * 100);
@@ -182,7 +176,6 @@ export default function ProjetsPage() {
                   )}
                 </div>
 
-                {/* Section Avancement et Tracklist */}
                 <div className="mt-auto border-t border-gray-800 pt-4">
                   <div className="mb-2 flex items-center justify-between text-sm">
                     <span className="text-gray-400">{totalSongs} Titre{totalSongs > 1 ? 's' : ''}</span>
@@ -195,7 +188,8 @@ export default function ProjetsPage() {
                     onClick={() => { setActiveProjectId(projet.id); setIsTrackModalOpen(true); }}
                     className="w-full flex items-center justify-center gap-2 rounded bg-white/5 py-2 text-sm font-medium text-white transition-all hover:bg-[#4ade80]/20 hover:text-[#4ade80]"
                   >
-                    <ListMusic size={16} /> Gérer la Tracklist
+                    {/* Le texte du bouton change si c'est un artiste ou l'admin */}
+                    <ListMusic size={16} /> {isAdmin ? 'Gérer la Tracklist' : 'Voir la Tracklist'}
                   </button>
                 </div>
               </div>
@@ -232,16 +226,19 @@ export default function ProjetsPage() {
       <Modal isOpen={isTrackModalOpen} onClose={() => setIsTrackModalOpen(false)} title={`Tracklist : ${activeProject?.title || ''}`}>
         <div className="space-y-6">
           
-          <form onSubmit={addChanson} className="flex gap-2">
-            <input 
-              type="text" required value={newSongTitle} onChange={(e)=>setNewSongTitle(e.target.value)} 
-              placeholder="Titre de la chanson..." 
-              className="flex-1 rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none" 
-            />
-            <button type="submit" className="flex items-center justify-center rounded-lg bg-[#4ade80] px-4 font-bold text-black hover:bg-[#4ade80]/90 transition-all">
-              <Plus size={20}/>
-            </button>
-          </form>
+          {/* Seul l'admin voit le formulaire d'ajout */}
+          {isAdmin && (
+            <form onSubmit={addChanson} className="flex gap-2">
+              <input 
+                type="text" required value={newSongTitle} onChange={(e)=>setNewSongTitle(e.target.value)} 
+                placeholder="Titre de la chanson..." 
+                className="flex-1 rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none" 
+              />
+              <button type="submit" className="flex items-center justify-center rounded-lg bg-[#4ade80] px-4 font-bold text-black hover:bg-[#4ade80]/90 transition-all">
+                <Plus size={20}/>
+              </button>
+            </form>
+          )}
           
           <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2">
             {activeProject?.chansons?.map((chanson: any) => (
@@ -249,12 +246,15 @@ export default function ProjetsPage() {
                 <span className={`font-medium flex-1 truncate ${chanson.status === 'Terminé' ? 'text-gray-500 line-through' : 'text-white'}`}>
                   {chanson.titre}
                 </span>
+                
+                {/* On grise et on désactive le sélecteur si c'est un artiste */}
                 <select 
                   value={chanson.status}
                   onChange={(e) => updateChansonStatus(chanson.id, e.target.value)}
+                  disabled={!isAdmin}
                   className={`rounded border px-2 py-1 text-xs focus:outline-none ${
                     chanson.status === 'Terminé' ? 'border-[#4ade80] bg-[#4ade80]/10 text-[#4ade80]' : 'border-gray-700 bg-black text-gray-300 focus:border-[#4ade80]'
-                  }`}
+                  } ${!isAdmin ? 'cursor-not-allowed opacity-70' : ''}`}
                 >
                   <option value="Maquette">Maquette</option>
                   <option value="Enregistrement">Enregistrement</option>
@@ -262,14 +262,20 @@ export default function ProjetsPage() {
                   <option value="Mastering">Mastering</option>
                   <option value="Terminé">Terminé</option>
                 </select>
-                <button onClick={() => deleteChanson(chanson.id)} className="text-gray-600 hover:text-red-500 transition-colors">
-                  <Trash2 size={16}/>
-                </button>
+
+                {/* Seul l'admin voit le bouton de suppression */}
+                {isAdmin && (
+                  <button onClick={() => deleteChanson(chanson.id)} className="text-gray-600 hover:text-red-500 transition-colors">
+                    <Trash2 size={16}/>
+                  </button>
+                )}
               </div>
             ))}
             
             {activeProject?.chansons?.length === 0 && (
-              <p className="text-center text-sm text-gray-500 py-8">Aucun titre dans ce projet. Ajoutez votre première maquette !</p>
+              <p className="text-center text-sm text-gray-500 py-8">
+                {isAdmin ? "Aucun titre dans ce projet. Ajoutez votre première maquette !" : "La tracklist n'a pas encore été créée pour ce projet."}
+              </p>
             )}
           </div>
         </div>
