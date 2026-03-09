@@ -37,7 +37,12 @@ export default function FinancesPage() {
   };
 
   const openNewModal = () => {
-    setFormData({ amount: '', type: 'income', description: '', date: new Date().toISOString().slice(0, 10) });
+    setFormData({ 
+      amount: '', 
+      type: 'income', 
+      description: '', 
+      date: new Date().toISOString().slice(0, 10) 
+    });
     setEditingId(null);
     setIsModalOpen(true);
   };
@@ -179,21 +184,59 @@ export default function FinancesPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm text-gray-400">Type d'opération *</label>
-            <select required value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none [&>option]:bg-black">
+            <select 
+              required 
+              value={formData.type} 
+              onChange={(e) => setFormData({...formData, type: e.target.value})} 
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none [&>option]:bg-black"
+            >
               <option value="income">Revenu (+)</option>
               <option value="expense">Dépense (-)</option>
             </select>
           </div>
           <div>
             <label className="mb-1 block text-sm text-gray-400">Montant (€) *</label>
-            <input type="number" step="0.01" min="0" required value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none" placeholder="Ex: 150.00" />
+            <input 
+              type="number" 
+              step="0.01" 
+              min="0" 
+              required 
+              value={formData.amount} 
+              onChange={(e) => setFormData({...formData, amount: e.target.value})} 
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none" 
+              placeholder="Ex: 150.00" 
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm text-gray-400">Description *</label>
-            <input type="text" required value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none" placeholder="Ex: Mixage EP ou Achat micro" />
+            <input 
+              type="text" 
+              required 
+              value={formData.description} 
+              onChange={(e) => setFormData({...formData, description: e.target.value})} 
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none" 
+              placeholder="Ex: Mixage EP ou Achat micro" 
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm text-gray-400">Date *</label>
-            <input type="date" required value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none [color-scheme:dark]" />
+            <input 
+              type="date" 
+              required 
+              value={formData.date} 
+              onChange={(e) => setFormData({...formData, date: e.target.value})} 
+              className="w-full rounded-lg border border-[#4ade80]/30 bg-black/50 px-4 py-2 text-white focus:border-[#4ade80] focus:outline-none [color-scheme:dark]" 
+            />
           </div>
-          <button type="submit
+          <button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 disabled:opacity-50"
+          >
+            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (editingId ? 'Mettre à jour' : 'Enregistrer')}
+          </button>
+        </form>
+      </Modal>
+    </div>
+  );
+}
