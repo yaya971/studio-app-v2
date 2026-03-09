@@ -14,17 +14,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchDashboardData() {
-      // Compter les Artistes
       const { count: artistesCount } = await supabase
         .from('artistes')
         .select('*', { count: 'exact', head: true });
 
-      // Compter les Projets
       const { count: projetsCount } = await supabase
         .from('projets')
         .select('*', { count: 'exact', head: true });
 
-      // Compter les Sessions et récupérer les 5 dernières
       const { count: sessionsCount, data: sessionsData } = await supabase
         .from('sessions')
         .select('*, projets(title, artistes(nom))', { count: 'exact' })
@@ -54,7 +51,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Formatage propre de la date
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = { 
       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
@@ -66,13 +62,12 @@ export default function DashboardPage() {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
-          MON STUDIO TEST
+          Tableau de Bord
         </h1>
         <p className="mt-2 text-gray-400">Bienvenue dans votre interface de gestion néon.</p>
       </div>
 
       <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Carte Artistes */}
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)] transition-all hover:border-[#4ade80]/60">
           <div className="mb-4 flex items-center justify-between">
             <Users className="text-[#4ade80]" size={24} />
@@ -81,7 +76,6 @@ export default function DashboardPage() {
           <h2 className="text-3xl font-bold text-white">{stats.artistes}</h2>
         </div>
 
-        {/* Carte Projets */}
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)] transition-all hover:border-[#4ade80]/60">
           <div className="mb-4 flex items-center justify-between">
             <Folder className="text-[#4ade80]" size={24} />
@@ -90,7 +84,6 @@ export default function DashboardPage() {
           <h2 className="text-3xl font-bold text-white">{stats.projets}</h2>
         </div>
 
-        {/* Carte Sessions */}
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)] transition-all hover:border-[#4ade80]/60">
           <div className="mb-4 flex items-center justify-between">
             <Mic2 className="text-[#4ade80]" size={24} />
@@ -99,7 +92,6 @@ export default function DashboardPage() {
           <h2 className="text-3xl font-bold text-white">{stats.sessions}</h2>
         </div>
 
-        {/* Carte Finances (En attente) */}
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 opacity-50 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
           <div className="mb-4 flex items-center justify-between">
             <Wallet className="text-[#4ade80]" size={24} />
@@ -109,7 +101,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Sessions récentes */}
       <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
         <h3 className="mb-6 text-xl font-bold text-[#4ade80]">Sessions Récentes</h3>
         {recentSessions.length === 0 ? (
@@ -124,7 +115,6 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-white">{session.title}</h4>
-                    {/* Ici on affiche clairement le projet ET l'artiste ! */}
                     <p className="text-sm font-medium text-[#4ade80]">
                       {session.projets?.artistes?.nom || 'Artiste inconnu'} • <span className="text-gray-400">{session.projets?.title}</span>
                     </p>
