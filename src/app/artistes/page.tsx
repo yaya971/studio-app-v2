@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Loader2, Mail, Phone, User } from 'lucide-react';
+import { Users, Plus, Loader2, Mail, Phone, User, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 
@@ -10,6 +10,9 @@ export default function ArtistesPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // NOUVEAU : On garde en mémoire l'ID de l'artiste qu'on est en train de modifier
+  const [editingId, setEditingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     nom: '',
@@ -34,21 +37,70 @@ export default function ArtistesPage() {
     setLoading(false);
   };
 
+  // NOUVEAU : Fonction pour ouvrir le modal en mode "Modification"
+  const handleEditClick = (artiste: any) => {
+    setFormData({
+      nom: artiste.nom,
+      email: artiste.email || '',
+      telephone: artiste.telephone || ''
+    });
+    setEditingId(artiste.id);
+    setIsModalOpen(true);
+  };
+
+  // NOUVEAU : Fonction pour supprimer un artiste
+  const handleDelete = async (id: string, nom: string) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${nom} ? \n⚠️ Attention : Cela supprimera aussi tous ses projets et sessions !`)) {
+      const { error } = await supabase
+        .from('artistes')
+        .delete()
+        .eq('id', id);
+        
+      if (!error) {
+        fetchArtistes(); // On rafraîchit la liste
+      } else {
+        alert("Erreur lors de la suppression.");
+      }
+    }
+  };
+
+  const openNewModal = () => {
+    setFormData({ nom: '', email: '', telephone: '' });
+    setEditingId(null);
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    const { error } = await supabase
-      .from('artistes')
-      .insert([formData]);
+    if (editingId) {
+      // MODE MODIFICATION
+      const { error } = await supabase
+        .from('artistes')
+        .update(formData)
+        .eq('id', editingId);
 
-    if (!error) {
-      setFormData({ nom: '', email: '', telephone: '' });
-      setIsModalOpen(false);
-      fetchArtistes();
+      if (!error) {
+        setIsModalOpen(false);
+        fetchArtistes();
+      } else {
+        alert("Erreur lors de la modification.");
+      }
     } else {
-      alert("Erreur lors de l'ajout de l'artiste. Vérifiez votre connexion.");
+      // MODE CRÉATION (L'ancien code)
+      const { error } = await supabase
+        .from('artistes')
+        .insert([formData]);
+
+      if (!error) {
+        setIsModalOpen(false);
+        fetchArtistes();
+      } else {
+        alert("Erreur lors de l'ajout.");
+      }
     }
+    
     setIsSubmitting(false);
   };
 
@@ -63,7 +115,7 @@ export default function ArtistesPage() {
         </div>
         
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={openNewModal}
           className="flex items-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 hover:shadow-[0_0_15px_rgba(74,222,128,0.4)]"
         >
           <Plus size={20} />
@@ -84,16 +136,27 @@ export default function ArtistesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {artistes.map((artiste) => (
-            <div key={artiste.id} className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 transition-all hover:border-[#4ade80]/80 hover:shadow-[0_0_15px_rgba(74,222,128,0.2)]">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#4ade80]/20 text-[#4ade80]">
+            <div key={artiste.id} className="group relative rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 transition-all hover:border-[#4ade80]/80 hover:shadow-[0_0_15px_rgba(74,222,128,0.2)]">
+              
+              {/* NOUVEAU : Les boutons d'action cachés qui apparaissent au survol */}
+              <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                <button onClick={() => handleEditClick(artiste)} className="rounded p-2 text-gray-400 hover:bg-[#4ade80]/20 hover:text-[#4ade80]">
+                  <Edit size={16} />
+                </button>
+                <button onClick={() => handleDelete(artiste.id, artiste.nom)} className="rounded p-2 text-gray-400 hover:bg-red-500/20 hover:text-red-500">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
+              <div className="mb-4 flex items-center gap-3 pr-16">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#4ade80]/20 text-[#4ade80]">
                   <User size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-white">{artiste.nom}</h3>
+                <h3 className="truncate text-xl font-bold text-white">{artiste.nom}</h3>
               </div>
               <div className="space-y-2 text-sm text-gray-400">
                 {artiste.email && (
-                  <div className="flex items-center gap-2"><Mail size={16} /> {artiste.email}</div>
+                  <div className="flex items-center gap-2"><Mail size={16} /> <span className="truncate">{artiste.email}</span></div>
                 )}
                 {artiste.telephone && (
                   <div className="flex items-center gap-2"><Phone size={16} /> {artiste.telephone}</div>
@@ -104,7 +167,8 @@ export default function ArtistesPage() {
         </div>
       )}
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nouvel Artiste">
+      {/* Le Modal intelligent (Création ou Modification) */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Modifier l'artiste" : "Nouvel Artiste"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm text-gray-400">Nom de l'artiste *</label>
@@ -142,7 +206,7 @@ export default function ArtistesPage() {
             disabled={isSubmitting}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90 disabled:opacity-50"
           >
-            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'Enregistrer'}
+            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (editingId ? 'Mettre à jour' : 'Enregistrer')}
           </button>
         </form>
       </Modal>
