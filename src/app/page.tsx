@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, CheckCircle2 } from 'lucide-react';
+import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
@@ -9,11 +9,8 @@ export default function DashboardPage() {
   const [role, setRole] = useState<'ADMIN' | 'ARTISTE' | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Données pour l'Admin
   const [adminStats, setAdminStats] = useState({ artistes: 0, projets: 0, sessions: 0, revenus: 0 });
   const [adminRecentSessions, setAdminRecentSessions] = useState<any[]>([]);
-
-  // Données pour l'Artiste
   const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
 
   useEffect(() => {
@@ -24,7 +21,6 @@ export default function DashboardPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Si personne n'est connecté, on renvoie vers le login et on arrête le chargement
       if (!session) {
         router.push('/login');
         return;
@@ -34,19 +30,9 @@ export default function DashboardPage() {
 
       if (artiste) {
         setRole('ARTISTE');
-        
         const { data: projets } = await supabase.from('projets').select('*, chansons(*)').eq('artiste_id', artiste.id);
-        
-        const { data: sessions } = await supabase
-          .from('sessions')
-          .select('*, projets!inner(artiste_id, title)')
-          .eq('projets.artiste_id', artiste.id)
-          .gte('date', new Date().toISOString())
-          .order('date', { ascending: true })
-          .limit(3);
-
+        const { data: sessions } = await supabase.from('sessions').select('*, projets!inner(artiste_id, title)').eq('projets.artiste_id', artiste.id).gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(3);
         setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: sessions || [] });
-
       } else {
         setRole('ADMIN');
         const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
@@ -63,9 +49,8 @@ export default function DashboardPage() {
         if (sessionsData) setAdminRecentSessions(sessionsData);
       }
     } catch (error) {
-      console.error("Erreur de chargement des données :", error);
+      console.error("Erreur de chargement :", error);
     } finally {
-      // CEINTURE DE SÉCURITÉ : Quoi qu'il arrive (succès ou erreur), on éteint le cercle de chargement !
       setLoading(false);
     }
   }
@@ -74,9 +59,7 @@ export default function DashboardPage() {
     return new Date(dateString).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
-  if (loading) {
-    return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-[#4ade80]" size={48} /></div>;
-  }
+  if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-[#4ade80]" size={48} /></div>;
 
   // ==========================================
   // VUE 1 : L'ESPACE ARTISTE
@@ -85,9 +68,7 @@ export default function DashboardPage() {
     return (
       <div className="p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#a855f7] drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">
-            Espace Artiste
-          </h1>
+          <h1 className="text-3xl font-bold text-[#a855f7] drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">Espace Artiste</h1>
           <p className="mt-2 text-gray-400">Bienvenue <strong className="text-white">{artisteData.nom}</strong>. Voici l'avancée de vos projets.</p>
         </div>
 
@@ -100,23 +81,30 @@ export default function DashboardPage() {
             ) : (
               artisteData.projets.map(projet => {
                 const totalSongs = projet.chansons?.length || 0;
-                const completedSongs = projet.chansons?.filter((c: any) => c.status === 'TERMINÉ').length || 0;
-                const progressPercentage = totalSongs === 0 ? 0 : Math.round((completedSongs / totalSongs) * 100);
+                const terminees = projet.chansons?.filter((c: any) => c.status === 'TERMINÉ').length || 0;
+                const enMix = projet.chansons?.filter((c: any) => c.status === 'MIXAGE/MASTERING').length || 0;
+                const enAttente = projet.chansons?.filter((c: any) => c.status === 'EN ATTENTE DE CORRECTION DE LA PART DE LARTISTE').length || 0;
+                const enEnregistrement = projet.chansons?.filter((c: any) => c.status === 'ENREGISTREMENT').length || 0;
 
                 return (
                   <div key={projet.id} className="rounded-xl border border-[#a855f7]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
                     <div className="mb-4 flex items-center justify-between">
                       <h3 className="text-2xl font-bold text-white">{projet.title}</h3>
-                      <span className="text-[#a855f7] font-bold">{progressPercentage}%</span>
+                      <span className="text-gray-400 flex items-center gap-1 text-sm"><Music size={14} /> {totalSongs} Titre{totalSongs > 1 ? 's' : ''}</span>
                     </div>
                     
-                    <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-gray-800">
-                      <div className="h-full bg-[#a855f7] shadow-[0_0_10px_#a855f7] transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
-                    </div>
-                    
-                    <div className="flex gap-4 text-sm text-gray-400">
-                      <span className="flex items-center gap-1"><Music size={14} /> {totalSongs} Titre{totalSongs > 1 ? 's' : ''}</span>
-                      <span className="flex items-center gap-1 text-green-400"><CheckCircle2 size={14} /> {completedSongs} Terminé{completedSongs > 1 ? 's' : ''}</span>
+                    {/* Le nouveau résumé par statut */}
+                    <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4 space-y-3 text-sm">
+                      {totalSongs === 0 ? (
+                        <p className="text-center text-gray-500 italic">Aucun titre ajouté pour le moment.</p>
+                      ) : (
+                        <>
+                          {terminees > 0 && <div className="flex justify-between items-center"><span className="text-gray-400">Terminées</span><span className="text-[#4ade80] font-bold px-2 py-0.5 rounded bg-[#4ade80]/10">{terminees}</span></div>}
+                          {enMix > 0 && <div className="flex justify-between items-center"><span className="text-gray-400">En Mix/Mastering</span><span className="text-yellow-500 font-bold px-2 py-0.5 rounded bg-yellow-500/10">{enMix}</span></div>}
+                          {enAttente > 0 && <div className="flex justify-between items-center"><span className="text-gray-400">En attente de correction</span><span className="text-orange-500 font-bold px-2 py-0.5 rounded bg-orange-500/10">{enAttente}</span></div>}
+                          {enEnregistrement > 0 && <div className="flex justify-between items-center"><span className="text-gray-400">Enregistrement</span><span className="text-blue-400 font-bold px-2 py-0.5 rounded bg-blue-400/10">{enEnregistrement}</span></div>}
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -126,7 +114,6 @@ export default function DashboardPage() {
 
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2"><Clock className="text-[#a855f7]" size={20}/> Prochaines Sessions</h2>
-            
             <div className="rounded-xl border border-[#a855f7]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
               {artisteData.prochainesSessions.length === 0 ? (
                 <p className="text-gray-400 text-center text-sm py-4">Aucune session prévue prochainement.</p>
