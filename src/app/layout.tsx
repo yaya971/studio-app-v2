@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, Folder, Mic2, LogOut, UserCircle, Wallet, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Users, Folder, Mic2, LogOut, UserCircle, Wallet, CalendarDays, Store } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
