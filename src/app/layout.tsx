@@ -49,15 +49,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   // NOUVEAU MENU COMPLET : Avec Réservation et Finances
-  const navItems = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard, adminOnly: false },
-    { name: "Réserver", href: "/reservations", icon: CalendarDays, adminOnly: false },
-    { name: "Projets", href: "/projets", icon: Folder, adminOnly: false },
-    { name: "Sessions", href: "/sessions", icon: Mic2, adminOnly: false },
-    { name: "Artistes", href: "/artistes", icon: Users, adminOnly: true },
-    { name: "Finances", href: "/finances", icon: Wallet, adminOnly: true },
-    { name: "Profil", href: "/profil", icon: UserCircle, adminOnly: false },
-  ].filter(item => !item.adminOnly || isAdmin);
+ const navItems = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, adminOnly: false },
+  { name: "Réserver", href: "/reservations", icon: CalendarDays, adminOnly: false },
+  { name: "Services", href: "/services", icon: Store, adminOnly: false }, // NOUVELLE LIGNE ICI
+  { name: "Projets", href: "/projets", icon: Folder, adminOnly: false },
+  { name: "Sessions", href: "/sessions", icon: Mic2, adminOnly: false },
+  { name: "Artistes", href: "/artistes", icon: Users, adminOnly: true },
+  { name: "Finances", href: "/finances", icon: Wallet, adminOnly: true },
+  { name: "Profil", href: "/profil", icon: UserCircle, adminOnly: false },
+].filter(item => !item.adminOnly || isAdmin);
 
   return (
     <html lang="fr">
