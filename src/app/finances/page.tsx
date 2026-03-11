@@ -19,7 +19,7 @@ export default function FinancesPage() {
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    type: 'income', // 'income' pour revenu, 'expense' pour dépense
+    type: 'income',
   });
 
   useEffect(() => {
@@ -35,18 +35,16 @@ export default function FinancesPage() {
       // VÉRIFICATION SÉCURITÉ : Est-ce bien l'Admin ?
       const { data: artiste } = await supabase.from('artistes').select('id').eq('user_id', session.user.id).maybeSingle();
       if (artiste) {
-        router.push('/'); // Si c'est un artiste, on l'éjecte vers l'accueil
+        router.push('/');
         return;
       }
       setIsAdmin(true);
 
-      // On récupère toutes les finances
       const { data, error } = await supabase.from('finances').select('*').order('created_at', { ascending: false });
       if (error) throw error;
 
       if (data) {
         setTransactions(data);
-        // Calcul des statistiques
         let totalRevenus = 0;
         let totalDepenses = 0;
         data.forEach(t => {
@@ -62,22 +60,29 @@ export default function FinancesPage() {
     }
   };
 
+  // LA FAMEUSE CORRECTION EST ICI (ajout de date)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    const { error } = await supabase.from('finances').insert([{
-      description: formData.description,
-      amount: parseFloat(formData.amount),
-      type: formData.type
-    }]);
+    try {
+      const { error } = await supabase.from('finances').insert([{
+        description: formData.description,
+        amount: parseFloat(formData.amount),
+        type: formData.type,
+        date: new Date().toISOString() // <-- La date obligatoire pour Supabase !
+      }]);
 
-    if (!error) {
+      if (error) throw error;
+
       setIsModalOpen(false);
       setFormData({ description: '', amount: '', type: 'income' });
       fetchFinances();
+    } catch (error: any) {
+      alert("Erreur lors de l'enregistrement : " + error.message);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -92,7 +97,7 @@ export default function FinancesPage() {
   };
 
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-[#4ade80]" size={48} /></div>;
-  if (!isAdmin) return null; // Sécurité invisible
+  if (!isAdmin) return null;
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
@@ -107,7 +112,6 @@ export default function FinancesPage() {
         </button>
       </div>
 
-      {/* LES 3 CARTES STATISTIQUES */}
       <div className="mb-8 grid gap-4 grid-cols-1 md:grid-cols-3">
         <div className="rounded-xl border border-gray-800 bg-black/50 p-6 shadow-[0_0_15px_rgba(0,0,0,0.5)]">
           <div className="mb-4 flex items-center justify-between">
@@ -134,7 +138,6 @@ export default function FinancesPage() {
         </div>
       </div>
 
-      {/* L'HISTORIQUE DES TRANSACTIONS */}
       <div className="rounded-xl border border-gray-800 bg-black/50 shadow-[0_0_15px_rgba(0,0,0,0.5)] overflow-hidden">
         <div className="border-b border-gray-800 bg-gray-900/50 p-4">
           <h2 className="font-bold text-white flex items-center gap-2"><CalendarDays size={18} className="text-[#4ade80]" /> Historique récent</h2>
@@ -169,7 +172,6 @@ export default function FinancesPage() {
         )}
       </div>
 
-      {/* MODAL : NOUVELLE TRANSACTION */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nouvelle Transaction">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -204,7 +206,6 @@ export default function FinancesPage() {
           </button>
         </form>
       </Modal>
-
     </div>
   );
 }
