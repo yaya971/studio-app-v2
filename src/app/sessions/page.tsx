@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Mic2, Plus, Loader2, Edit, Trash2, Folder, User } from 'lucide-react';
+import { Calendar, Clock, Mic2, Plus, Loader2, Edit, Trash2, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 
 export default function SessionsPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<any[]>([]);
-  const [projets, setProjets] = useState<any[]>([]);
+  const [artistes, setArtistes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,7 +21,7 @@ export default function SessionsPage() {
     title: '',
     date: '',
     duree: '2',
-    project_id: ''
+    artiste_id: '' // C'EST MAINTENANT L'ARTISTE QU'ON SÉLECTIONNE
   });
 
   useEffect(() => {
@@ -32,32 +32,23 @@ export default function SessionsPage() {
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.push('/login'); return; }
+
+      const { data: artisteLoggue } = await supabase.from('artistes').select('id, nom').eq('user_id', session.user.id).maybeSingle();
+      setCurrentArtiste(artisteLoggue);
+
+      // On récupère les sessions liées aux artistes
+      let sessionsQuery = supabase.from('sessions').select('*, artistes(id, nom)').order('date', { ascending: true });
+      let artistesQuery = supabase.from('artistes').select('id, nom').order('nom', { ascending: true });
+
+      if (artisteLoggue) {
+        sessionsQuery = sessionsQuery.eq('artiste_id', artisteLoggue.id);
+      }
+
+      const [sessionsRes, artistesRes] = await Promise.all([sessionsQuery, artistesQuery]);
       
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-
-      const { data: artiste } = await supabase.from('artistes').select('id, nom').eq('user_id', session.user.id).maybeSingle();
-      setCurrentArtiste(artiste);
-
-      let sessionsQuery = supabase.from('sessions').select('*, projets(id, title, artistes(nom))').order('date', { ascending: true });
-      let projetsQuery = supabase.from('projets').select('id, title, artistes(nom)');
-
-      if (artiste) {
-        sessionsQuery = sessionsQuery.eq('projets.artiste_id', artiste.id);
-        projetsQuery = projetsQuery.eq('artiste_id', artiste.id);
-      }
-
-      const [sessionsRes, projetsRes] = await Promise.all([sessionsQuery, projetsQuery]);
-      
-      if (sessionsRes.data) {
-        const filteredSessions = artiste 
-          ? sessionsRes.data.filter(s => s.projets !== null)
-          : sessionsRes.data;
-        setSessions(filteredSessions);
-      }
-      if (projetsRes.data) setProjets(projetsRes.data);
+      if (sessionsRes.data) setSessions(sessionsRes.data);
+      if (artistesRes.data) setArtistes(artistesRes.data);
 
     } catch (error) {
       console.error("Erreur :", error);
@@ -67,14 +58,19 @@ export default function SessionsPage() {
   };
 
   const openNewModal = () => {
-    setFormData({ title: '', date: '', duree: '2', project_id: '' });
+    setFormData({ title: '', date: '', duree: '2', artiste_id: '' });
     setEditingId(null);
     setIsModalOpen(true);
   };
 
   const handleEditClick = (session: any) => {
     const formattedDate = new Date(session.date).toISOString().slice(0, 16);
-    setFormData({ title: session.title, date: formattedDate, duree: session.duree.toString(), project_id: session.project_id });
+    setFormData({ 
+      title: session.title, 
+      date: formattedDate, 
+      duree: session.duree.toString(), 
+      artiste_id: session.artiste_id || '' 
+    });
     setEditingId(session.id);
     setIsModalOpen(true);
   };
@@ -86,24 +82,32 @@ export default function SessionsPage() {
     }
   };
 
+  // LE BOUTON NE TOURNERA PLUS DANS LE VIDE !
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!formData.project_id) {
-      alert("Veuillez sélectionner un projet !");
+    if (!formData.artiste_id) {
+      alert("Veuillez sélectionner un artiste !");
       setIsSubmitting(false);
       return;
     }
 
-    if (editingId) {
-      const { error } = await supabase.from('sessions').update(formData).eq('id', editingId);
-      if (!error) { setIsModalOpen(false); fetchData(); }
-    } else {
-      const { error } = await supabase.from('sessions').insert([formData]);
-      if (!error) { setIsModalOpen(false); fetchData(); }
+    try {
+      if (editingId) {
+        const { error } = await supabase.from('sessions').update(formData).eq('id', editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('sessions').insert([formData]);
+        if (error) throw error;
+      }
+      setIsModalOpen(false); 
+      fetchData();
+    } catch (error: any) {
+      alert("Erreur lors de l'enregistrement : " + error.message);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -134,7 +138,7 @@ export default function SessionsPage() {
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-8 text-center">
           <Calendar className="mx-auto mb-4 text-[#4ade80]/50" size={48} />
           <h3 className="mb-2 text-xl font-bold text-white">Aucune session</h3>
-          <p className="text-gray-400 font-bold">Votre planning est vide pour le moment.</p>
+          <p className="text-gray-400 font-bold">Le planning est vide.</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -163,12 +167,7 @@ export default function SessionsPage() {
               <div className="space-y-3 border-t border-gray-800 pt-4">
                 <div className="flex items-center gap-3 text-sm text-gray-300 bg-white/5 p-2.5 rounded-lg font-bold">
                   <User size={16} className="text-[#4ade80]" />
-                  <span className="truncate">{session.projets?.artistes?.nom || 'Artiste inconnu'}</span>
-                </div>
-                
-                <div className="flex items-center gap-3 text-sm text-gray-300 bg-white/5 p-2.5 rounded-lg font-bold">
-                  <Folder size={16} className="text-[#4ade80]" />
-                  <span className="truncate">{session.projets?.title || 'Projet inconnu'}</span>
+                  <span className="truncate">{session.artistes?.nom || 'Artiste inconnu'}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm text-gray-400 px-2 mt-4 font-bold">
@@ -186,7 +185,7 @@ export default function SessionsPage() {
         </div>
       )}
 
-      {/* MODAL : Ajouter / Modifier une session */}
+      {/* MODAL */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Modifier la session" : "Nouvelle Session"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -194,10 +193,10 @@ export default function SessionsPage() {
             <input type="text" required value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-bold text-gray-400">Projet associé *</label>
-            <select required value={formData.project_id} onChange={(e) => setFormData({...formData, project_id: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80] [&>option]:bg-black">
-              <option value="">Sélectionnez un projet...</option>
-              {projets.map(p => <option key={p.id} value={p.id}>{p.title} ({p.artistes?.nom})</option>)}
+            <label className="mb-1 block text-sm font-bold text-gray-400">Artiste *</label>
+            <select required value={formData.artiste_id} onChange={(e) => setFormData({...formData, artiste_id: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80] [&>option]:bg-black">
+              <option value="">Sélectionnez un artiste...</option>
+              {artistes.map(a => <option key={a.id} value={a.id}>{a.nom}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -211,7 +210,7 @@ export default function SessionsPage() {
             </div>
           </div>
           
-          <button type="submit" disabled={isSubmitting} className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all">
+          <button type="submit" disabled={isSubmitting} className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all disabled:opacity-50">
             {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (editingId ? 'Mettre à jour' : 'Programmer la session')}
           </button>
         </form>
