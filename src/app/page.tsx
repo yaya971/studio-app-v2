@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, MessageSquare, Bell } from 'lucide-react';
+import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, MessageSquare, Bell, Store, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [adminStats, setAdminStats] = useState({ artistes: 0, projets: 0, sessions: 0, revenus: 0 });
   const [adminRecentSessions, setAdminRecentSessions] = useState<any[]>([]);
   const [adminRetours, setAdminRetours] = useState<any[]>([]);
+  const [adminDemandes, setAdminDemandes] = useState<any[]>([]); // NOUVEAU : Commandes
 
   const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
 
@@ -42,14 +43,24 @@ export default function DashboardPage() {
         if (financesData) { totalRevenus = financesData.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount), 0); }
 
         const { data: retoursData } = await supabase.from('chansons').select('id, titre, retours_artiste, projets(title, artistes(nom))').neq('retours_artiste', '').not('retours_artiste', 'is', null);
+        
+        // NOUVEAU : Récupération des demandes de services
+        const { data: demandesData } = await supabase.from('demandes_services').select('id, service_title, message, created_at, artistes(nom)').eq('status', 'EN ATTENTE').order('created_at', { ascending: false });
 
         setAdminStats({ artistes: artistesCount || 0, projets: projetsCount || 0, sessions: sessionsCount || 0, revenus: totalRevenus });
         if (sessionsData) setAdminRecentSessions(sessionsData);
         if (retoursData) setAdminRetours(retoursData);
+        if (demandesData) setAdminDemandes(demandesData);
       }
     } catch (error) { console.error("Erreur :", error); } 
     finally { setLoading(false); }
   }
+
+  // Marquer une demande comme traitée
+  const marquerDemandeTraitee = async (id: string) => {
+    await supabase.from('demandes_services').update({ status: 'TRAITÉ' }).eq('id', id);
+    fetchDashboardData(); // Rafraîchir
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -57,6 +68,7 @@ export default function DashboardPage() {
 
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-[#4ade80]" size={48} /></div>;
 
+  // ==== VUE ARTISTE ====
   if (role === 'ARTISTE') {
     return (
       <div className="p-4 md:p-8">
@@ -124,6 +136,7 @@ export default function DashboardPage() {
     );
   }
 
+  // ==== VUE ADMIN ====
   return (
     <div className="p-4 md:p-8">
       <div className="mb-8">
@@ -132,6 +145,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
+        {/* STATISTIQUES... (Identiques) */}
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
           <div className="mb-4 flex justify-between"><Users className="text-[#4ade80]" size={24} /></div>
           <p className="text-sm text-gray-400 font-bold">Artistes</p><h2 className="text-3xl font-bold text-white">{adminStats.artistes}</h2>
@@ -150,7 +164,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* COLONNE 1 : SESSIONS (inchangée) */}
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
           <h3 className="mb-6 text-xl font-bold text-[#4ade80] flex items-center gap-2"><Clock size={24}/> Sessions Récentes</h3>
           {adminRecentSessions.length === 0 ? <p className="text-gray-400 font-bold">Aucune session.</p> : (
@@ -161,7 +176,7 @@ export default function DashboardPage() {
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ade80]/10 text-[#4ade80]"><Mic2 size={20} /></div>
                     <div className="min-w-0">
                       <h4 className="font-bold text-white truncate">{session.title}</h4>
-                      <p className="text-sm font-bold text-[#4ade80] truncate">{session.projets?.artistes?.nom} • <span className="text-gray-400">{session.projets?.title}</span></p>
+                      <p className="text-sm font-bold text-[#4ade80] truncate">{session.projets?.artistes?.nom}</p>
                     </div>
                   </div>
                   <div className="text-right text-xs text-gray-400 font-bold ml-2 shrink-0">{formatDate(session.date)}</div>
@@ -171,9 +186,43 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* COLONNE 2 : COMMANDES SERVICES (NOUVEAU) */}
+        <div className="rounded-xl border border-blue-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+          <h3 className="mb-6 text-xl font-bold text-blue-400 flex items-center gap-2">
+            <Store size={24} /> Nouvelles Commandes
+          </h3>
+          {adminDemandes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+              <ShoppingCart size={48} className="mb-4 opacity-20" />
+              <p className="font-bold text-center">Aucune demande en attente.</p>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              {adminDemandes.map((demande) => (
+                <div key={demande.id} className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 relative group">
+                  <div className="mb-2 flex flex-col gap-1">
+                    <span className="text-xs font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded w-fit uppercase">
+                      {demande.artistes?.nom}
+                    </span>
+                    <h4 className="font-bold text-white text-sm">{demande.service_title}</h4>
+                  </div>
+                  <div className="rounded bg-black/50 p-3 text-xs text-gray-300 border border-gray-800 font-bold mb-3">
+                    <p className="whitespace-pre-wrap">{demande.message}</p>
+                  </div>
+                  
+                  <button onClick={() => marquerDemandeTraitee(demande.id)} className="flex w-full items-center justify-center gap-2 rounded bg-blue-500/10 py-2 text-xs font-bold text-blue-400 hover:bg-blue-500 hover:text-white transition-all border border-blue-500/30">
+                    <CheckCircle size={14} /> Marquer comme traitée
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* COLONNE 3 : RETOURS MIXAGE (inchangée) */}
         <div className="rounded-xl border border-orange-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
           <h3 className="mb-6 text-xl font-bold text-orange-500 flex items-center gap-2">
-            <Bell size={24} className="animate-pulse" /> Retours à traiter
+            <Bell size={24} className="animate-pulse" /> Retours Mixage
           </h3>
           {adminRetours.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-gray-500">
@@ -181,19 +230,14 @@ export default function DashboardPage() {
               <p className="font-bold">Aucun retour en attente.</p>
             </div>
           ) : (
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {adminRetours.map((retour) => (
                 <div key={retour.id} className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <h4 className="font-bold text-white">{retour.titre}</h4>
-                    <span className="text-xs font-bold text-orange-500 bg-orange-500/10 px-2 py-1 rounded">
-                      {retour.projets?.artistes?.nom}
-                    </span>
+                    <h4 className="font-bold text-white text-sm">{retour.titre}</h4>
+                    <span className="text-xs font-bold text-orange-500 bg-orange-500/10 px-2 py-1 rounded">{retour.projets?.artistes?.nom}</span>
                   </div>
-                  <p className="text-xs text-gray-400 mb-3 flex items-center gap-1 font-bold">
-                    <Folder size={12} /> {retour.projets?.title}
-                  </p>
-                  <div className="rounded bg-black/50 p-3 text-sm text-gray-300 border border-gray-800 font-bold">
+                  <div className="rounded bg-black/50 p-3 text-xs text-gray-300 border border-gray-800 font-bold">
                     <p className="whitespace-pre-wrap">{retour.retours_artiste}</p>
                   </div>
                 </div>
