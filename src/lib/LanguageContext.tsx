@@ -10,21 +10,21 @@ const translations = {
     "dash.adm.title": "Tableau de Bord", "dash.adm.subtitle": "Bienvenue dans votre interface de gestion globale.", "dash.adm.artists": "Artistes", "dash.adm.projects": "Projets", "dash.adm.sessions": "Sessions", "dash.adm.revenue": "Revenus", "dash.adm.recent_sess": "Sessions Récentes", "dash.adm.no_sess": "Aucune session.", "dash.adm.orders": "Commandes", "dash.adm.history": "Historique", "dash.adm.no_orders": "Aucune demande.", "dash.adm.process": "Traiter & Facturer", "dash.adm.returns": "Retours Mixage", "dash.adm.no_returns": "Aucun retour.", "dash.adm.unknown": "Inconnu",
     "pwa.title": "Astuce de Pro 📱", "pwa.desc": "Pour une expérience optimale, installe LACAV & me directement sur l'écran d'accueil de ton téléphone !", "pwa.apple": "🍎 Sur iPhone (Safari)", "pwa.android": "🤖 Sur Android (Chrome)", "pwa.btn": "J'AI COMPRIS",
 
-    // Sessions & Services & Finances & Profil & Projets (Déjà traduits)
+    // Sessions & Services & Finances & Profil & Projets
     "sess.title": "Planning", "sess.subtitle": "Gérez les sessions d'enregistrement.", "sess.new": "Nouvelle session", "sess.empty": "Aucune session", "sess.empty_desc": "Le planning est vide.", "sess.duration": "Durée : ", "sess.hours": " heure(s)", "sess.done": "Terminée", "sess.modal.edit": "Modifier la session", "sess.modal.new": "Nouvelle Session", "sess.modal.title_label": "Titre *", "sess.modal.artist": "Artiste *", "sess.modal.select_artist": "Sélectionnez...", "sess.modal.date": "Date *", "sess.modal.duration_label": "Durée (h) *", "sess.modal.update_btn": "Mettre à jour", "sess.modal.add_btn": "Programmer",
     "srv.title": "Services", "srv.subtitle": "Prestations sur-mesure.", "srv.add": "Ajouter un service", "srv.order": "Demander", "srv.modal.order_title": "Demande", "srv.modal.sent": "Envoyée !", "srv.modal.contact_soon": "On te recontacte vite.", "srv.modal.need": "Ton besoin :", "srv.modal.send_btn": "Envoyer", "srv.modal.edit_title": "Modifier", "srv.modal.new_title": "Nouveau", "srv.modal.name_label": "Nom *", "srv.modal.desc_label": "Description *", "srv.modal.price_label": "Prix *", "srv.modal.save_btn": "Enregistrer",
     "fin.title": "Trésorerie", "fin.subtitle": "Revenus et dépenses.", "fin.balance": "Bilan Net", "fin.income": "Revenus", "fin.expense": "Dépenses", "fin.add": "Nouvelle Transaction", "fin.empty": "Aucune transaction.", "fin.col.date": "Date", "fin.col.desc": "Description", "fin.col.type": "Type", "fin.col.amount": "Montant", "fin.modal.title": "Ajouter", "fin.modal.desc": "Description *", "fin.modal.amount": "Montant *", "fin.modal.type": "Type *", "fin.modal.type_in": "Revenu (+)", "fin.modal.type_out": "Dépense (-)", "fin.modal.date": "Date *", "fin.modal.btn": "Ajouter",
     "prof.title": "Mon Profil", "prof.subtitle": "Gère tes infos.", "prof.logout": "Se déconnecter", "prof.info": "Mes Informations", "prof.name": "Nom", "prof.email": "Email", "prof.member": "Membre depuis le", "prof.no_info": "Non trouvé.",
     "proj.title": "Projets", "proj.subtitle": "Gérez les productions.", "proj.new": "Nouveau projet", "proj.empty": "Aucun projet", "proj.unknown_artist": "Inconnu", "proj.tracks": "Titre", "proj.tracks_pl": "Titres", "proj.open_tracklist": "Ouvrir",
 
-    // NOUVEAU : Auth (Login / Register)
+    // Auth
     "auth.login.title": "Connexion", "auth.login.subtitle": "Accède à ton espace.", "auth.email": "Adresse Email", "auth.password": "Mot de passe", "auth.btn.login": "Se connecter", "auth.no_account": "Pas encore de compte ?", "auth.create_one": "Créer un espace",
     "auth.reg.title": "Créer mon espace", "auth.reg.subtitle": "Rejoins le studio.", "auth.name": "Nom d'artiste", "auth.btn.register": "S'inscrire", "auth.has_account": "Déjà un compte ?", "auth.login_here": "Connecte-toi",
     "auth.check_email.title": "Vérifie tes emails ! ✉️", "auth.check_email.desc": "Un lien de confirmation a été envoyé à ton adresse.", "auth.check_email.btn": "Retour à l'accueil",
 
-    // NOUVEAU : Reservations & Artistes (Admin)
-    "res.title": "Réserver", "res.subtitle": "Prends rendez-vous au studio.", "res.book_btn": "Ouvrir le calendrier",
-    "art.title": "Artistes", "art.subtitle": "Gestion du répertoire.", "art.empty": "Aucun artiste.", "art.col.name": "Nom", "art.col.email": "Email", "art.col.date": "Inscription"
+    // NOUVEAU : Reservations & Artistes
+    "res.title": "Réservation", "res.subtitle": "Bloquez votre prochaine session studio, tournage ou mixage.",
+    "art.title": "Artistes", "art.subtitle": "Gérez votre répertoire client et leurs profils.", "art.add": "Ajouter un client", "art.empty": "Aucun artiste", "art.empty_desc": "Commencez par ajouter votre premier client.", "art.no_email": "Aucun email", "art.alert.delete": "Êtes-vous sûr de vouloir supprimer cet artiste ? \n⚠️ Tous ses projets et sessions seront supprimés !", "art.alert.upload_err": "Erreur lors de l'upload : ", "art.modal.edit": "Modifier le client", "art.modal.new": "Nouveau Client", "art.modal.name": "Nom de scène *", "art.modal.email": "Email (optionnel)", "art.modal.phone": "Téléphone (optionnel)", "art.modal.update_btn": "Mettre à jour", "art.modal.save_btn": "Enregistrer"
   },
   en: {
     // Menu & Dashboard & PWA
@@ -40,14 +40,14 @@ const translations = {
     "prof.title": "Profile", "prof.subtitle": "Manage info.", "prof.logout": "Log out", "prof.info": "My Info", "prof.name": "Name", "prof.email": "Email", "prof.member": "Member since", "prof.no_info": "Not found.",
     "proj.title": "Projects", "proj.subtitle": "Manage productions.", "proj.new": "New project", "proj.empty": "No projects", "proj.unknown_artist": "Unknown", "proj.tracks": "Track", "proj.tracks_pl": "Tracks", "proj.open_tracklist": "Open",
 
-    // NOUVEAU : Auth
+    // Auth
     "auth.login.title": "Log in", "auth.login.subtitle": "Access your account.", "auth.email": "Email", "auth.password": "Password", "auth.btn.login": "Sign in", "auth.no_account": "No account yet?", "auth.create_one": "Create one",
     "auth.reg.title": "Sign up", "auth.reg.subtitle": "Join the studio.", "auth.name": "Artist Name", "auth.btn.register": "Register", "auth.has_account": "Already have an account?", "auth.login_here": "Log in",
     "auth.check_email.title": "Check your email! ✉️", "auth.check_email.desc": "A confirmation link has been sent.", "auth.check_email.btn": "Back to home",
 
     // NOUVEAU : Reservations & Artistes
-    "res.title": "Book", "res.subtitle": "Schedule a studio session.", "res.book_btn": "Open calendar",
-    "art.title": "Artists", "art.subtitle": "Roster management.", "art.empty": "No artists.", "art.col.name": "Name", "art.col.email": "Email", "art.col.date": "Joined"
+    "res.title": "Booking", "res.subtitle": "Book your next studio, video, or mixing session.",
+    "art.title": "Artists", "art.subtitle": "Manage your client roster and profiles.", "art.add": "Add a client", "art.empty": "No artists", "art.empty_desc": "Start by adding your first client.", "art.no_email": "No email", "art.alert.delete": "Are you sure you want to delete this artist? \n⚠️ All their projects and sessions will be deleted!", "art.alert.upload_err": "Upload error: ", "art.modal.edit": "Edit client", "art.modal.new": "New Client", "art.modal.name": "Stage name *", "art.modal.email": "Email (optional)", "art.modal.phone": "Phone (optional)", "art.modal.update_btn": "Update", "art.modal.save_btn": "Save"
   },
   pt: {
     // Menu & Dashboard & PWA
@@ -63,14 +63,14 @@ const translations = {
     "prof.title": "Perfil", "prof.subtitle": "Suas informações.", "prof.logout": "Sair", "prof.info": "Minhas Informações", "prof.name": "Nome", "prof.email": "Email", "prof.member": "Membro desde", "prof.no_info": "Não encontrado.",
     "proj.title": "Projetos", "proj.subtitle": "Gerencie produções.", "proj.new": "Novo projeto", "proj.empty": "Nenhum projeto", "proj.unknown_artist": "Desconhecido", "proj.tracks": "Faixa", "proj.tracks_pl": "Faixas", "proj.open_tracklist": "Abrir",
 
-    // NOUVEAU : Auth
+    // Auth
     "auth.login.title": "Entrar", "auth.login.subtitle": "Acesse sua conta.", "auth.email": "E-mail", "auth.password": "Senha", "auth.btn.login": "Entrar", "auth.no_account": "Ainda não tem conta?", "auth.create_one": "Criar conta",
     "auth.reg.title": "Registar", "auth.reg.subtitle": "Junte-se ao estúdio.", "auth.name": "Nome do Artista", "auth.btn.register": "Inscrever-se", "auth.has_account": "Já tem uma conta?", "auth.login_here": "Entrar",
     "auth.check_email.title": "Verifique seu e-mail! ✉️", "auth.check_email.desc": "Um link de confirmação foi enviado.", "auth.check_email.btn": "Voltar ao início",
 
     // NOUVEAU : Reservations & Artistes
-    "res.title": "Reservar", "res.subtitle": "Agende uma sessão no estúdio.", "res.book_btn": "Abrir calendário",
-    "art.title": "Artistas", "art.subtitle": "Gestão de artistas.", "art.empty": "Nenhum artista.", "art.col.name": "Nome", "art.col.email": "E-mail", "art.col.date": "Inscrito em"
+    "res.title": "Reserva", "res.subtitle": "Agende sua próxima sessão de estúdio, vídeo ou mixagem.",
+    "art.title": "Artistas", "art.subtitle": "Gerencie sua carteira de clientes e perfis.", "art.add": "Adicionar cliente", "art.empty": "Nenhum artista", "art.empty_desc": "Comece adicionando seu primeiro cliente.", "art.no_email": "Sem e-mail", "art.alert.delete": "Tem certeza que deseja excluir este artista? \n⚠️ Todos os seus projetos e sessões serão excluídos!", "art.alert.upload_err": "Erro no upload: ", "art.modal.edit": "Editar cliente", "art.modal.new": "Novo Cliente", "art.modal.name": "Nome artístico *", "art.modal.email": "E-mail (opcional)", "art.modal.phone": "Telefone (opcional)", "art.modal.update_btn": "Atualizar", "art.modal.save_btn": "Salvar"
   }
 };
 
