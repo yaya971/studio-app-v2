@@ -14,11 +14,11 @@ export default function DashboardPage() {
   const [adminRecentSessions, setAdminRecentSessions] = useState<any[]>([]);
   const [adminRetours, setAdminRetours] = useState<any[]>([]);
   const [adminDemandes, setAdminDemandes] = useState<any[]>([]);
-  const [adminHistorique, setAdminHistorique] = useState<any[]>([]); // Pour l'historique
+  const [adminHistorique, setAdminHistorique] = useState<any[]>([]); 
 
   const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
 
-  // Modals de gestion des commandes
+  // Modals
   const [isValidateModalOpen, setIsValidateModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [demandeToValidate, setDemandeToValidate] = useState<any>(null);
@@ -50,8 +50,6 @@ export default function DashboardPage() {
         if (financesData) { totalRevenus = financesData.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount), 0); }
 
         const { data: retoursData } = await supabase.from('chansons').select('id, titre, retours_artiste, projets(title, artistes(nom))').neq('retours_artiste', '').not('retours_artiste', 'is', null);
-        
-        // Commandes en attente & Historique
         const { data: demandesAttente } = await supabase.from('demandes_services').select('id, service_title, message, created_at, artistes(nom)').eq('status', 'EN ATTENTE').order('created_at', { ascending: false });
         const { data: demandesTraitees } = await supabase.from('demandes_services').select('id, service_title, message, prix_final, created_at, artistes(nom)').eq('status', 'TRAITÉ').order('created_at', { ascending: false });
 
@@ -71,6 +69,7 @@ export default function DashboardPage() {
     setIsValidateModalOpen(true);
   };
 
+  // NOUVELLE FONCTION BLINDÉE
   const validerEtFacturer = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -82,21 +81,41 @@ export default function DashboardPage() {
       return;
     }
 
-    // 1. Mettre à jour la commande
-    await supabase.from('demandes_services').update({ status: 'TRAITÉ', prix_final: price }).eq('id', demandeToValidate.id);
-    
-    // 2. Ajouter automatiquement aux Finances !
-    if (price > 0) {
-      await supabase.from('finances').insert([{
-        description: `Boutique : ${demandeToValidate.service_title} (${demandeToValidate.artistes?.nom})`,
-        amount: price,
-        type: 'income'
-      }]);
-    }
+    try {
+      // 1. Mettre à jour le statut de la commande
+      const { error: updateError } = await supabase.from('demandes_services')
+        .update({ status: 'TRAITÉ', prix_final: price })
+        .eq('id', demandeToValidate.id);
+      
+      if (updateError) throw new Error("Erreur de mise à jour de la commande : " + updateError.message);
 
-    setIsValidateModalOpen(false);
-    setIsSubmitting(false);
-    fetchDashboardData(); 
+      // 2. Extraire le nom de l'artiste proprement
+      let nomArtiste = 'Artiste inconnu';
+      if (demandeToValidate.artistes) {
+        nomArtiste = Array.isArray(demandeToValidate.artistes) 
+          ? demandeToValidate.artistes[0]?.nom 
+          : demandeToValidate.artistes.nom;
+      }
+
+      // 3. Ajouter à la table finances
+      if (price > 0) {
+        const { error: financeError } = await supabase.from('finances').insert([{
+          description: `Boutique : ${demandeToValidate.service_title} (${nomArtiste})`,
+          amount: price,
+          type: 'income'
+        }]);
+
+        if (financeError) throw new Error("Erreur lors de l'ajout aux finances : " + financeError.message);
+      }
+
+      setIsValidateModalOpen(false);
+      fetchDashboardData(); 
+
+    } catch (err: any) {
+      alert(err.message); // Ça nous affichera exactement le problème s'il y en a un !
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -104,7 +123,6 @@ export default function DashboardPage() {
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-[#4ade80]" size={48} /></div>;
 
   if (role === 'ARTISTE') {
-    // === L'ESPACE ARTISTE RESTE INCHANGÉ ===
     return (
       <div className="p-4 md:p-8">
         <div className="mb-8"><h1 className="text-3xl font-bold text-[#a855f7] drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">Espace Artiste</h1><p className="mt-2 text-gray-400">Bienvenue <strong className="text-white">{artisteData.nom}</strong>.</p></div>
@@ -198,7 +216,7 @@ export default function DashboardPage() {
       <Modal isOpen={isValidateModalOpen} onClose={() => setIsValidateModalOpen(false)} title="Facturer le service">
         <form onSubmit={validerEtFacturer} className="space-y-4">
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4 mb-4">
-            <p className="text-sm text-gray-300 font-bold">Artiste : <span className="text-white">{demandeToValidate?.artistes?.nom}</span></p>
+            <p className="text-sm text-gray-300 font-bold">Artiste : <span className="text-white">{demandeToValidate?.artistes?.nom || 'Inconnu'}</span></p>
             <p className="text-sm text-gray-300 font-bold">Service : <span className="text-white">{demandeToValidate?.service_title}</span></p>
           </div>
           <div>
@@ -207,7 +225,6 @@ export default function DashboardPage() {
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
               <input type="number" step="0.01" min="0" required value={finalPrice} onChange={(e) => setFinalPrice(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-black/50 py-3 pl-10 pr-4 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="ex: 150" />
             </div>
-            <p className="text-xs text-gray-500 mt-2 font-bold">Ce montant sera automatiquement ajouté à l'onglet Finances.</p>
           </div>
           <button type="submit" disabled={isSubmitting} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all">
             {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "Valider & Encaisser"}
@@ -225,7 +242,7 @@ export default function DashboardPage() {
               <div key={dem.id} className="rounded-lg border border-gray-800 bg-gray-900/50 p-4 flex justify-between items-center">
                 <div>
                   <h4 className="font-bold text-white text-sm">{dem.service_title}</h4>
-                  <p className="text-xs text-gray-400 font-bold">{dem.artistes?.nom} • {formatDate(dem.created_at)}</p>
+                  <p className="text-xs text-gray-400 font-bold">{dem.artistes?.nom || 'Client'} • {formatDate(dem.created_at)}</p>
                 </div>
                 <div className="font-bold text-[#4ade80] bg-[#4ade80]/10 px-3 py-1 rounded-lg">
                   +{dem.prix_final} €
