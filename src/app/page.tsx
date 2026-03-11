@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, MessageSquare, Bell, Store, CheckCircle } from 'lucide-react';
+import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, MessageSquare, Bell, Store, CheckCircle, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
