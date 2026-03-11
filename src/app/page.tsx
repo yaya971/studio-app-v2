@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, MessageSquare, Bell, Store, CheckCircle, ShoppingCart, History, DollarSign } from 'lucide-react';
+import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, MessageSquare, Bell, Store, CheckCircle, ShoppingCart, History, DollarSign, Smartphone } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 
@@ -24,6 +24,7 @@ export default function DashboardPage() {
 
   // --- ÉTATS ARTISTE ---
   const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
+  const [showPwaPrompt, setShowPwaPrompt] = useState(false); // NOUVEAU : État de la notification
 
   useEffect(() => { fetchDashboardData(); }, []);
 
@@ -45,6 +46,16 @@ export default function DashboardPage() {
           .limit(3);
 
         setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: upcomingSessions || [] });
+
+        // NOUVEAU : On vérifie si c'est la première connexion pour afficher l'astuce mobile
+        if (typeof window !== 'undefined') {
+          const hasSeenPrompt = localStorage.getItem('hasSeenAppPrompt');
+          if (!hasSeenPrompt) {
+            // On attend 1.5s pour que ça fasse plus naturel
+            setTimeout(() => setShowPwaPrompt(true), 1500);
+          }
+        }
+
       } else {
         setRole('ADMIN');
         const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
@@ -68,6 +79,12 @@ export default function DashboardPage() {
     } catch (error) { console.error("Erreur :", error); } 
     finally { setLoading(false); }
   }
+
+  // Fermer la notification et s'en souvenir
+  const closePwaPrompt = () => {
+    localStorage.setItem('hasSeenAppPrompt', 'true');
+    setShowPwaPrompt(false);
+  };
 
   // Fonctions Admin
   const openValidateModal = (demande: any) => { setDemandeToValidate(demande); setFinalPrice(''); setIsValidateModalOpen(true); };
@@ -134,6 +151,30 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* NOUVEAU : MODAL D'INSTALLATION MOBILE */}
+        <Modal isOpen={showPwaPrompt} onClose={closePwaPrompt} title="Astuce de Pro 📱">
+          <div className="space-y-4">
+            <p className="text-gray-300 font-bold text-sm">
+              Pour une expérience optimale, installe <span className="text-[#a855f7]">LACAV & me</span> directement sur l'écran d'accueil de ton téléphone (comme une vraie appli) !
+            </p>
+            
+            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
+              <h4 className="text-white font-bold mb-2 flex items-center gap-2">🍎 Sur iPhone (Safari)</h4>
+              <p className="text-xs text-gray-400 font-bold leading-relaxed">1. Appuie sur l'icône <strong>Partager</strong> en bas de l'écran (le carré avec la flèche).<br/>2. Glisse vers le bas et choisis <strong>"Sur l'écran d'accueil"</strong>.</p>
+            </div>
+
+            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
+              <h4 className="text-white font-bold mb-2 flex items-center gap-2">🤖 Sur Android (Chrome)</h4>
+              <p className="text-xs text-gray-400 font-bold leading-relaxed">1. Appuie sur les <strong>3 petits points</strong> en haut à droite.<br/>2. Choisis <strong>"Ajouter à l'écran d'accueil"</strong>.</p>
+            </div>
+
+            <button onClick={closePwaPrompt} className="w-full mt-4 flex items-center justify-center gap-2 bg-[#a855f7] text-white font-bold py-3 rounded-lg hover:bg-[#a855f7]/90 transition-all hover:scale-[1.02]">
+              <Smartphone size={20} /> C'est compris !
+            </button>
+          </div>
+        </Modal>
+
       </div>
     );
   }
