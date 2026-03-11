@@ -36,29 +36,28 @@ export default function DashboardPage() {
 
       if (artiste) {
         setRole('ARTISTE');
-        // On récupère les projets
         const { data: projets } = await supabase.from('projets').select('*, chansons(*)').eq('artiste_id', artiste.id);
         
-        // CORRECTION SESSIONS : On cherche les sessions liées à ces projets uniquement
-        let upcomingSessions: any[] = [];
-        if (projets && projets.length > 0) {
-          const projectIds = projets.map((p: any) => p.id);
-          const { data: sessions } = await supabase.from('sessions')
-            .select('*, projets(title)')
-            .in('project_id', projectIds)
-            .gte('date', new Date().toISOString())
-            .order('date', { ascending: true })
-            .limit(3);
-          
-          if (sessions) upcomingSessions = sessions;
-        }
+        // CORRECTION : On cherche directement les sessions via l'artiste_id
+        const { data: upcomingSessions } = await supabase.from('sessions')
+          .select('*, artistes(nom)')
+          .eq('artiste_id', artiste.id)
+          .gte('date', new Date().toISOString())
+          .order('date', { ascending: true })
+          .limit(3);
 
-        setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: upcomingSessions });
+        setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: upcomingSessions || [] });
       } else {
         setRole('ADMIN');
         const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
         const { count: projetsCount } = await supabase.from('projets').select('*', { count: 'exact', head: true });
-        const { count: sessionsCount, data: sessionsData } = await supabase.from('sessions').select('*, projets(title, artistes(nom))', { count: 'exact' }).order('date', { ascending: false }).limit(5);
+        
+        // CORRECTION : On récupère les sessions avec le bon lien "artistes(nom)"
+        const { count: sessionsCount, data: sessionsData } = await supabase.from('sessions')
+          .select('*, artistes(nom)', { count: 'exact' })
+          .order('date', { ascending: false })
+          .limit(5);
+          
         const { data: financesData } = await supabase.from('finances').select('amount, type');
         
         let totalRevenus = 0;
@@ -96,11 +95,7 @@ export default function DashboardPage() {
     }
 
     try {
-      // 1. Mettre à jour la commande
-      const { error: updateError } = await supabase.from('demandes_services')
-        .update({ status: 'TRAITÉ', prix_final: price })
-        .eq('id', demandeToValidate.id);
-      
+      const { error: updateError } = await supabase.from('demandes_services').update({ status: 'TRAITÉ', prix_final: price }).eq('id', demandeToValidate.id);
       if (updateError) throw new Error("Erreur mise à jour commande: " + updateError.message);
 
       let nomArtiste = 'Client Boutique';
@@ -108,26 +103,21 @@ export default function DashboardPage() {
         nomArtiste = Array.isArray(demandeToValidate.artistes) ? demandeToValidate.artistes[0]?.nom : demandeToValidate.artistes.nom;
       }
 
-      // 2. CORRECTION FINANCES : Ajout de la date dans l'envoi
       if (price > 0) {
         const { error: financeError } = await supabase.from('finances').insert([{
           description: `Boutique : ${demandeToValidate.service_title} (${nomArtiste})`,
           amount: price,
           type: 'income',
-          date: new Date().toISOString() // <-- LA CORRECTION EST ICI !
+          date: new Date().toISOString()
         }]);
-
         if (financeError) throw new Error("Erreur ajout finances: " + financeError.message);
       }
 
       setIsValidateModalOpen(false);
       fetchDashboardData(); 
 
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (err: any) { alert(err.message); } 
+    finally { setIsSubmitting(false); }
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -157,7 +147,6 @@ export default function DashboardPage() {
                   {artisteData.prochainesSessions.map(session => (
                     <div key={session.id} className="border-b border-gray-800 pb-4 mb-4 last:border-0 last:pb-0">
                       <h4 className="font-bold text-white">{session.title}</h4>
-                      <p className="text-sm text-[#a855f7] mb-1 font-bold">{session.projets?.title}</p>
                       <span className="text-xs text-gray-400 font-bold">{formatDate(session.date)}</span>
                     </div>
                   ))}
@@ -189,7 +178,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {adminRecentSessions.length === 0 ? <p className="text-gray-400 font-bold">Aucune session.</p> : adminRecentSessions.map((session) => (
               <div key={session.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-                <div className="min-w-0"><h4 className="font-bold text-white truncate">{session.title}</h4><p className="text-sm font-bold text-[#4ade80] truncate">{session.projets?.artistes?.nom}</p></div>
+                <div className="min-w-0"><h4 className="font-bold text-white truncate">{session.title}</h4><p className="text-sm font-bold text-[#4ade80] truncate">{session.artistes?.nom || 'Artiste inconnu'}</p></div>
                 <div className="text-xs text-gray-400 font-bold shrink-0 ml-2">{formatDate(session.date)}</div>
               </div>
             ))}
@@ -274,6 +263,7 @@ export default function DashboardPage() {
           )}
         </div>
       </Modal>
+
     </div>
   );
 }
