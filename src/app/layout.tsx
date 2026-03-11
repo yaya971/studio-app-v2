@@ -65,6 +65,11 @@ const navItems = [
   });
   return (
     <html lang="fr">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+      </head>
       <body className={`${inter.className} bg-black text-white min-h-screen pb-20 md:pb-0`}>
         {isClient && !isAuthPage && (
           <>
