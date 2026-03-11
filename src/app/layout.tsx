@@ -49,17 +49,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   // NOUVEAU MENU COMPLET : Avec Réservation et Finances
- const navItems = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard, adminOnly: false },
-  { name: "Réserver", href: "/reservations", icon: CalendarDays, adminOnly: false },
-  { name: "Services", href: "/services", icon: Store, adminOnly: false }, // NOUVELLE LIGNE ICI
-  { name: "Projets", href: "/projets", icon: Folder, adminOnly: false },
-  { name: "Sessions", href: "/sessions", icon: Mic2, adminOnly: false },
-  { name: "Artistes", href: "/artistes", icon: Users, adminOnly: true },
-  { name: "Finances", href: "/finances", icon: Wallet, adminOnly: true },
-  { name: "Profil", href: "/profil", icon: UserCircle, adminOnly: false },
-].filter(item => !item.adminOnly || isAdmin);
-
+const navItems = [
+    { name: "Dashboard", href: "/", icon: LayoutDashboard, role: "both" },
+    { name: "Réserver", href: "/reservations", icon: CalendarDays, role: "artiste" }, // Réservé aux artistes
+    { name: "Services", href: "/services", icon: Store, role: "both" },
+    { name: "Projets", href: "/projets", icon: Folder, role: "both" },
+    { name: "Sessions", href: "/sessions", icon: Mic2, role: "both" },
+    { name: "Artistes", href: "/artistes", icon: Users, role: "admin" }, // Réservé à l'admin
+    { name: "Finances", href: "/finances", icon: Wallet, role: "admin" }, // Réservé à l'admin
+    { name: "Profil", href: "/profil", icon: UserCircle, role: "both" },
+  ].filter(item => {
+    if (isAdmin && item.role === "artiste") return false; // On cache à l'admin
+    if (!isAdmin && item.role === "admin") return false;  // On cache à l'artiste
+    return true;
+  });
   return (
     <html lang="fr">
       <body className={`${inter.className} bg-black text-white min-h-screen pb-20 md:pb-0`}>
