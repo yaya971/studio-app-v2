@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Users, Plus, Loader2, Edit, Trash2, Mail, Phone, Camera } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
+import { useLanguage } from '@/lib/LanguageContext';
 
 export default function ArtistesPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [artistes, setArtistes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,7 +41,7 @@ export default function ArtistesPage() {
   const handleEditClick = (artiste: any) => { setFormData({ nom: artiste.nom, email: artiste.email || '', telephone: artiste.telephone || '' }); setEditingId(artiste.id); setIsModalOpen(true); };
 
   const handleDelete = async (id: string, nom: string) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${nom} ? \n⚠️ Tous ses projets et sessions seront supprimés !`)) {
+    if (window.confirm(t('art.alert.delete'))) {
       const { error } = await supabase.from('artistes').delete().eq('id', id);
       if (!error) fetchData();
     }
@@ -72,7 +74,7 @@ export default function ArtistesPage() {
       const { error: updateError } = await supabase.from('artistes').update({ avatar_url: publicUrl }).eq('id', artisteId);
       if (updateError) throw updateError;
       fetchData(); 
-    } catch (error: any) { alert("Erreur lors de l'upload : " + error.message); } 
+    } catch (error: any) { alert(t('art.alert.upload_err') + error.message); } 
     finally { setUploadingId(null); }
   };
 
@@ -80,12 +82,12 @@ export default function ArtistesPage() {
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">Artistes</h1>
-          <p className="mt-2 text-gray-400 font-bold">Gérez votre répertoire client et leurs profils.</p>
+          <h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">{t('art.title')}</h1>
+          <p className="mt-2 text-gray-400 font-bold">{t('art.subtitle')}</p>
         </div>
         
         <button onClick={openNewModal} className="flex items-center justify-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black transition-all hover:bg-[#4ade80]/90">
-          <Plus size={20} /> Ajouter un client
+          <Plus size={20} /> {t('art.add')}
         </button>
       </div>
 
@@ -94,8 +96,8 @@ export default function ArtistesPage() {
       ) : artistes.length === 0 ? (
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-8 text-center">
           <Users className="mx-auto mb-4 text-[#4ade80]/50" size={48} />
-          <h3 className="mb-2 text-xl font-bold text-white">Aucun artiste</h3>
-          <p className="text-gray-400 font-bold">Commencez par ajouter votre premier client.</p>
+          <h3 className="mb-2 text-xl font-bold text-white">{t('art.empty')}</h3>
+          <p className="text-gray-400 font-bold">{t('art.empty_desc')}</p>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -128,7 +130,7 @@ export default function ArtistesPage() {
               <div className="mt-3 flex w-full flex-col gap-2 rounded-lg bg-gray-900/80 p-3 text-sm border border-gray-800 font-bold">
                 <div className="flex items-center justify-center gap-2 text-gray-400 truncate">
                   <Mail size={14} className="shrink-0 text-[#4ade80]" /> 
-                  <span className="truncate">{artiste.email || 'Aucun email'}</span>
+                  <span className="truncate">{artiste.email || t('art.no_email')}</span>
                 </div>
                 {artiste.telephone && (
                   <div className="flex items-center justify-center gap-2 text-gray-400">
@@ -143,14 +145,14 @@ export default function ArtistesPage() {
       )}
 
       {/* MODAL */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Modifier le client" : "Nouveau Client"}>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? t('art.modal.edit') : t('art.modal.new')}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div><label className="mb-1 block text-sm font-bold text-gray-400">Nom de scène *</label><input type="text" required value={formData.nom} onChange={(e) => setFormData({...formData, nom: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="Ex: Daft Punk" /></div>
-          <div><label className="mb-1 block text-sm font-bold text-gray-400">Email (optionnel)</label><input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="contact@artiste.com" /></div>
-          <div><label className="mb-1 block text-sm font-bold text-gray-400">Téléphone (optionnel)</label><input type="tel" value={formData.telephone} onChange={(e) => setFormData({...formData, telephone: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="06 12 34 56 78" /></div>
+          <div><label className="mb-1 block text-sm font-bold text-gray-400">{t('art.modal.name')}</label><input type="text" required value={formData.nom} onChange={(e) => setFormData({...formData, nom: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="Ex: Daft Punk" /></div>
+          <div><label className="mb-1 block text-sm font-bold text-gray-400">{t('art.modal.email')}</label><input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="contact@artiste.com" /></div>
+          <div><label className="mb-1 block text-sm font-bold text-gray-400">{t('art.modal.phone')}</label><input type="tel" value={formData.telephone} onChange={(e) => setFormData({...formData, telephone: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="06 12 34 56 78" /></div>
           
           <button type="submit" disabled={isSubmitting} className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90">
-            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (editingId ? 'Mettre à jour' : 'Enregistrer')}
+            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (editingId ? t('art.modal.update_btn') : t('art.modal.save_btn'))}
           </button>
         </form>
       </Modal>
