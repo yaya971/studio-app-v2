@@ -36,9 +36,24 @@ export default function DashboardPage() {
 
       if (artiste) {
         setRole('ARTISTE');
+        // On récupère les projets
         const { data: projets } = await supabase.from('projets').select('*, chansons(*)').eq('artiste_id', artiste.id);
-        const { data: sessions } = await supabase.from('sessions').select('*, projets!inner(artiste_id, title)').eq('projets.artiste_id', artiste.id).gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(3);
-        setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: sessions || [] });
+        
+        // CORRECTION SESSIONS : On cherche les sessions liées à ces projets uniquement
+        let upcomingSessions: any[] = [];
+        if (projets && projets.length > 0) {
+          const projectIds = projets.map((p: any) => p.id);
+          const { data: sessions } = await supabase.from('sessions')
+            .select('*, projets(title)')
+            .in('project_id', projectIds)
+            .gte('date', new Date().toISOString())
+            .order('date', { ascending: true })
+            .limit(3);
+          
+          if (sessions) upcomingSessions = sessions;
+        }
+
+        setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: upcomingSessions });
       } else {
         setRole('ADMIN');
         const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
@@ -69,7 +84,6 @@ export default function DashboardPage() {
     setIsValidateModalOpen(true);
   };
 
-  // NOUVELLE FONCTION BLINDÉE
   const validerEtFacturer = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -82,37 +96,35 @@ export default function DashboardPage() {
     }
 
     try {
-      // 1. Mettre à jour le statut de la commande
+      // 1. Mettre à jour la commande
       const { error: updateError } = await supabase.from('demandes_services')
         .update({ status: 'TRAITÉ', prix_final: price })
         .eq('id', demandeToValidate.id);
       
-      if (updateError) throw new Error("Erreur de mise à jour de la commande : " + updateError.message);
+      if (updateError) throw new Error("Erreur mise à jour commande: " + updateError.message);
 
-      // 2. Extraire le nom de l'artiste proprement
-      let nomArtiste = 'Artiste inconnu';
+      let nomArtiste = 'Client Boutique';
       if (demandeToValidate.artistes) {
-        nomArtiste = Array.isArray(demandeToValidate.artistes) 
-          ? demandeToValidate.artistes[0]?.nom 
-          : demandeToValidate.artistes.nom;
+        nomArtiste = Array.isArray(demandeToValidate.artistes) ? demandeToValidate.artistes[0]?.nom : demandeToValidate.artistes.nom;
       }
 
-      // 3. Ajouter à la table finances
+      // 2. CORRECTION FINANCES : Ajout de la date dans l'envoi
       if (price > 0) {
         const { error: financeError } = await supabase.from('finances').insert([{
           description: `Boutique : ${demandeToValidate.service_title} (${nomArtiste})`,
           amount: price,
-          type: 'income'
+          type: 'income',
+          date: new Date().toISOString() // <-- LA CORRECTION EST ICI !
         }]);
 
-        if (financeError) throw new Error("Erreur lors de l'ajout aux finances : " + financeError.message);
+        if (financeError) throw new Error("Erreur ajout finances: " + financeError.message);
       }
 
       setIsValidateModalOpen(false);
       fetchDashboardData(); 
 
     } catch (err: any) {
-      alert(err.message); // Ça nous affichera exactement le problème s'il y en a un !
+      alert(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -138,9 +150,19 @@ export default function DashboardPage() {
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2"><Clock className="text-[#a855f7]" size={20}/> Prochaines Sessions</h2>
             <div className="rounded-xl border border-[#a855f7]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-              {artisteData.prochainesSessions.map(session => (
-                <div key={session.id} className="border-b border-gray-800 pb-4 mb-4"><h4 className="font-bold text-white">{session.title}</h4><span className="text-xs text-gray-400 font-bold">{formatDate(session.date)}</span></div>
-              ))}
+              {artisteData.prochainesSessions.length === 0 ? (
+                <p className="text-gray-400 text-center text-sm py-4 font-bold">Aucune session prévue.</p>
+              ) : (
+                <div className="space-y-4">
+                  {artisteData.prochainesSessions.map(session => (
+                    <div key={session.id} className="border-b border-gray-800 pb-4 mb-4 last:border-0 last:pb-0">
+                      <h4 className="font-bold text-white">{session.title}</h4>
+                      <p className="text-sm text-[#a855f7] mb-1 font-bold">{session.projets?.title}</p>
+                      <span className="text-xs text-gray-400 font-bold">{formatDate(session.date)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -165,10 +187,10 @@ export default function DashboardPage() {
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
           <h3 className="mb-6 text-xl font-bold text-[#4ade80] flex items-center gap-2"><Clock size={24}/> Sessions Récentes</h3>
           <div className="space-y-4">
-            {adminRecentSessions.map((session) => (
+            {adminRecentSessions.length === 0 ? <p className="text-gray-400 font-bold">Aucune session.</p> : adminRecentSessions.map((session) => (
               <div key={session.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-                <div className="min-w-0"><h4 className="font-bold text-white truncate">{session.title}</h4><p className="text-sm font-bold text-[#4ade80]">{session.projets?.artistes?.nom}</p></div>
-                <div className="text-xs text-gray-400 font-bold">{formatDate(session.date)}</div>
+                <div className="min-w-0"><h4 className="font-bold text-white truncate">{session.title}</h4><p className="text-sm font-bold text-[#4ade80] truncate">{session.projets?.artistes?.nom}</p></div>
+                <div className="text-xs text-gray-400 font-bold shrink-0 ml-2">{formatDate(session.date)}</div>
               </div>
             ))}
           </div>
@@ -202,7 +224,7 @@ export default function DashboardPage() {
         <div className="rounded-xl border border-orange-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
           <h3 className="mb-6 text-xl font-bold text-orange-500 flex items-center gap-2"><Bell size={24} className="animate-pulse" /> Retours Mixage</h3>
           <div className="space-y-4">
-            {adminRetours.map((retour) => (
+            {adminRetours.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-gray-500"><MessageSquare size={48} className="mb-4 opacity-20" /><p className="font-bold">Aucun retour.</p></div> : adminRetours.map((retour) => (
               <div key={retour.id} className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4">
                 <h4 className="font-bold text-white text-sm">{retour.titre}</h4><span className="text-xs font-bold text-orange-500">{retour.projets?.artistes?.nom}</span>
                 <div className="rounded bg-black/50 p-3 text-xs text-gray-300 mt-2 border border-gray-800 font-bold"><p>{retour.retours_artiste}</p></div>
@@ -252,7 +274,6 @@ export default function DashboardPage() {
           )}
         </div>
       </Modal>
-
     </div>
   );
 }
