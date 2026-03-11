@@ -4,13 +4,14 @@ import { useRouter } from 'next/navigation';
 import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, MessageSquare, Bell, Store, CheckCircle, ShoppingCart, History, DollarSign, Smartphone } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
+import { useLanguage } from '@/lib/LanguageContext'; // IMPORT DU TRADUCTEUR
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { t } = useLanguage(); // ON ACTIVE LE TRADUCTEUR
   const [role, setRole] = useState<'ADMIN' | 'ARTISTE' | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // --- ÉTATS ADMIN ---
   const [adminStats, setAdminStats] = useState({ artistes: 0, projets: 0, sessions: 0, revenus: 0 });
   const [adminRecentSessions, setAdminRecentSessions] = useState<any[]>([]);
   const [adminRetours, setAdminRetours] = useState<any[]>([]);
@@ -22,10 +23,7 @@ export default function DashboardPage() {
   const [finalPrice, setFinalPrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- ÉTATS ARTISTE ---
   const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
-  
-  // NOUVEAU : État de la notification mobile
   const [showPwaPrompt, setShowPwaPrompt] = useState(false); 
 
   useEffect(() => { fetchDashboardData(); }, []);
@@ -40,24 +38,14 @@ export default function DashboardPage() {
       if (artiste) {
         setRole('ARTISTE');
         const { data: projets } = await supabase.from('projets').select('*, chansons(*)').eq('artiste_id', artiste.id);
-        const { data: upcomingSessions } = await supabase.from('sessions')
-          .select('*, artistes(nom)')
-          .eq('artiste_id', artiste.id)
-          .gte('date', new Date().toISOString())
-          .order('date', { ascending: true })
-          .limit(3);
+        const { data: upcomingSessions } = await supabase.from('sessions').select('*, artistes(nom)').eq('artiste_id', artiste.id).gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(3);
 
         setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: upcomingSessions || [] });
 
-        // AFFICHAGE IMMÉDIAT ET FORCÉ DU POP-UP
         if (typeof window !== 'undefined') {
-          // On utilise "_V2" pour forcer l'affichage même si tu avais déjà fait des tests
           const hasSeenPrompt = localStorage.getItem('hasSeenAppPrompt_V2');
-          if (!hasSeenPrompt) {
-            setShowPwaPrompt(true); // Zéro délai, apparition instantanée
-          }
+          if (!hasSeenPrompt) setShowPwaPrompt(true);
         }
-
       } else {
         setRole('ADMIN');
         const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
@@ -82,35 +70,24 @@ export default function DashboardPage() {
     finally { setLoading(false); }
   }
 
-  // Fonction pour fermer définitivement le pop-up
-  const closePwaPrompt = () => {
-    localStorage.setItem('hasSeenAppPrompt_V2', 'true');
-    setShowPwaPrompt(false);
-  };
+  const closePwaPrompt = () => { localStorage.setItem('hasSeenAppPrompt_V2', 'true'); setShowPwaPrompt(false); };
 
-  // Fonctions Admin
   const openValidateModal = (demande: any) => { setDemandeToValidate(demande); setFinalPrice(''); setIsValidateModalOpen(true); };
   
   const validerEtFacturer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+    e.preventDefault(); setIsSubmitting(true);
     const price = parseFloat(finalPrice);
     if (isNaN(price) || price < 0) { alert("Montant invalide."); setIsSubmitting(false); return; }
 
     try {
       const { error: updateError } = await supabase.from('demandes_services').update({ status: 'TRAITÉ', prix_final: price }).eq('id', demandeToValidate.id);
-      if (updateError) throw new Error("Erreur mise à jour: " + updateError.message);
+      if (updateError) throw new Error(updateError.message);
 
-      let nomArtiste = demandeToValidate.artistes?.nom || 'Client Boutique';
+      let nomArtiste = demandeToValidate.artistes?.nom || 'Client';
       if (price > 0) {
-        const { error: financeError } = await supabase.from('finances').insert([{
-          description: `Boutique : ${demandeToValidate.service_title} (${nomArtiste})`,
-          amount: price, type: 'income', date: new Date().toISOString()
-        }]);
-        if (financeError) throw new Error("Erreur finances: " + financeError.message);
+        await supabase.from('finances').insert([{ description: `Boutique : ${demandeToValidate.service_title} (${nomArtiste})`, amount: price, type: 'income', date: new Date().toISOString() }]);
       }
-      setIsValidateModalOpen(false);
-      fetchDashboardData(); 
+      setIsValidateModalOpen(false); fetchDashboardData(); 
     } catch (err: any) { alert(err.message); } 
     finally { setIsSubmitting(false); }
   };
@@ -119,27 +96,25 @@ export default function DashboardPage() {
 
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-[#4ade80]" size={48} /></div>;
 
-  // ==========================================
-  // VUE STRICTEMENT RÉSERVÉE AUX ARTISTES
-  // ==========================================
+  // ==== VUE ARTISTE ====
   if (role === 'ARTISTE') {
     return (
       <div className="p-4 md:p-8">
-        <div className="mb-8"><h1 className="text-3xl font-bold text-[#a855f7] drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">Espace Artiste</h1><p className="mt-2 text-gray-400">Bienvenue <strong className="text-white">{artisteData.nom}</strong>.</p></div>
+        <div className="mb-8"><h1 className="text-3xl font-bold text-[#a855f7] drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">{t('dash.art.title')}</h1><p className="mt-2 text-gray-400">{t('dash.art.welcome')} <strong className="text-white">{artisteData.nom}</strong>.</p></div>
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2"><Folder className="text-[#a855f7]" size={20}/> Mes Projets en cours</h2>
-            {artisteData.projets.length === 0 ? <div className="rounded-xl border border-gray-800 bg-black/50 p-8 text-center text-gray-400 font-bold">Aucun projet en cours.</div> : artisteData.projets.map(projet => (
+            <h2 className="text-xl font-bold text-white flex items-center gap-2"><Folder className="text-[#a855f7]" size={20}/> {t('dash.art.proj_title')}</h2>
+            {artisteData.projets.length === 0 ? <div className="rounded-xl border border-gray-800 bg-black/50 p-8 text-center text-gray-400 font-bold">{t('dash.art.no_proj')}</div> : artisteData.projets.map(projet => (
               <div key={projet.id} className="rounded-xl border border-[#a855f7]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-                <div className="mb-4 flex items-center justify-between"><h3 className="text-2xl font-bold text-white">{projet.title}</h3><span className="text-gray-400 flex items-center gap-1 text-sm font-bold"><Music size={14} /> {projet.chansons?.length || 0} Titres</span></div>
+                <div className="mb-4 flex items-center justify-between"><h3 className="text-2xl font-bold text-white">{projet.title}</h3><span className="text-gray-400 flex items-center gap-1 text-sm font-bold"><Music size={14} /> {projet.chansons?.length || 0} {t('dash.art.tracks')}</span></div>
               </div>
             ))}
           </div>
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2"><Clock className="text-[#a855f7]" size={20}/> Prochaines Sessions</h2>
+            <h2 className="text-xl font-bold text-white flex items-center gap-2"><Clock className="text-[#a855f7]" size={20}/> {t('dash.art.sess_title')}</h2>
             <div className="rounded-xl border border-[#a855f7]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
               {artisteData.prochainesSessions.length === 0 ? (
-                <p className="text-gray-400 text-center text-sm py-4 font-bold">Aucune session prévue.</p>
+                <p className="text-gray-400 text-center text-sm py-4 font-bold">{t('dash.art.no_sess')}</p>
               ) : (
                 <div className="space-y-4">
                   {artisteData.prochainesSessions.map(session => (
@@ -154,87 +129,67 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* POP-UP MOBILE - BLOQUÉ TANT QU'ON NE CLIQUE PAS */}
-        <Modal isOpen={showPwaPrompt} onClose={closePwaPrompt} title="Astuce de Pro 📱">
+        <Modal isOpen={showPwaPrompt} onClose={closePwaPrompt} title={t('pwa.title')}>
           <div className="space-y-4">
-            <p className="text-gray-300 font-bold text-sm">
-              Pour une expérience optimale, installe <span className="text-[#a855f7]">LACAV & me</span> directement sur l'écran d'accueil de ton téléphone !
-            </p>
-            
-            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
-              <h4 className="text-white font-bold mb-2 flex items-center gap-2">🍎 Sur iPhone (Safari)</h4>
-              <p className="text-xs text-gray-400 font-bold leading-relaxed">1. Appuie sur l'icône <strong>Partager</strong> en bas de l'écran (le carré avec la flèche).<br/>2. Glisse vers le bas et choisis <strong>"Sur l'écran d'accueil"</strong>.</p>
-            </div>
-
-            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
-              <h4 className="text-white font-bold mb-2 flex items-center gap-2">🤖 Sur Android (Chrome)</h4>
-              <p className="text-xs text-gray-400 font-bold leading-relaxed">1. Appuie sur les <strong>3 petits points</strong> en haut à droite.<br/>2. Choisis <strong>"Ajouter à l'écran d'accueil"</strong>.</p>
-            </div>
-
-            <button onClick={closePwaPrompt} className="w-full mt-4 flex items-center justify-center gap-2 bg-[#a855f7] text-white font-bold py-3 rounded-lg hover:bg-[#a855f7]/90 transition-all hover:scale-[1.02]">
-              <Smartphone size={20} /> J'AI COMPRIS
-            </button>
+            <p className="text-gray-300 font-bold text-sm">{t('pwa.desc')}</p>
+            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800"><h4 className="text-white font-bold mb-2">{t('pwa.apple')}</h4></div>
+            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800"><h4 className="text-white font-bold mb-2">{t('pwa.android')}</h4></div>
+            <button onClick={closePwaPrompt} className="w-full mt-4 flex items-center justify-center gap-2 bg-[#a855f7] text-white font-bold py-3 rounded-lg hover:bg-[#a855f7]/90 transition-all">{t('pwa.btn')}</button>
           </div>
         </Modal>
-
       </div>
     );
   }
 
-  // ==========================================
-  // VUE STRICTEMENT RÉSERVÉE À L'ADMIN
-  // ==========================================
+  // ==== VUE ADMIN ====
   return (
     <div className="p-4 md:p-8">
-      <div className="mb-8"><h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">Tableau de Bord</h1><p className="mt-2 text-gray-400 font-bold">Bienvenue dans votre interface de gestion globale.</p></div>
+      <div className="mb-8"><h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">{t('dash.adm.title')}</h1><p className="mt-2 text-gray-400 font-bold">{t('dash.adm.subtitle')}</p></div>
 
       <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Users className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">Artistes</p><h2 className="text-3xl font-bold text-white">{adminStats.artistes}</h2></div>
-        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Folder className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">Projets</p><h2 className="text-3xl font-bold text-white">{adminStats.projets}</h2></div>
-        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Mic2 className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">Sessions</p><h2 className="text-3xl font-bold text-white">{adminStats.sessions}</h2></div>
-        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Wallet className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">Revenus</p><h2 className="text-3xl font-bold text-[#4ade80]">{adminStats.revenus.toFixed(2)} €</h2></div>
+        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Users className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">{t('dash.adm.artists')}</p><h2 className="text-3xl font-bold text-white">{adminStats.artistes}</h2></div>
+        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Folder className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">{t('dash.adm.projects')}</p><h2 className="text-3xl font-bold text-white">{adminStats.projets}</h2></div>
+        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Mic2 className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">{t('dash.adm.sessions')}</p><h2 className="text-3xl font-bold text-white">{adminStats.sessions}</h2></div>
+        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Wallet className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">{t('dash.adm.revenue')}</p><h2 className="text-3xl font-bold text-[#4ade80]">{adminStats.revenus.toFixed(2)} €</h2></div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* COLONNE SESSIONS */}
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
-          <h3 className="mb-6 text-xl font-bold text-[#4ade80] flex items-center gap-2"><Clock size={24}/> Sessions Récentes</h3>
+          <h3 className="mb-6 text-xl font-bold text-[#4ade80] flex items-center gap-2"><Clock size={24}/> {t('dash.adm.recent_sess')}</h3>
           <div className="space-y-4">
-            {adminRecentSessions.length === 0 ? <p className="text-gray-400 font-bold">Aucune session.</p> : adminRecentSessions.map((session) => (
+            {adminRecentSessions.length === 0 ? <p className="text-gray-400 font-bold">{t('dash.adm.no_sess')}</p> : adminRecentSessions.map((session) => (
               <div key={session.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-                <div className="min-w-0"><h4 className="font-bold text-white truncate">{session.title}</h4><p className="text-sm font-bold text-[#4ade80] truncate">{session.artistes?.nom || 'Inconnu'}</p></div>
+                <div className="min-w-0"><h4 className="font-bold text-white truncate">{session.title}</h4><p className="text-sm font-bold text-[#4ade80] truncate">{session.artistes?.nom || t('dash.adm.unknown')}</p></div>
                 <div className="text-xs text-gray-400 font-bold shrink-0 ml-2">{formatDate(session.date)}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* COLONNE BOUTIQUE */}
         <div className="rounded-xl border border-blue-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-blue-400 flex items-center gap-2"><Store size={24} /> Commandes</h3>
-            <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs font-bold text-blue-400 hover:text-white transition-colors flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"><History size={14}/> Historique</button>
+            <h3 className="text-xl font-bold text-blue-400 flex items-center gap-2"><Store size={24} /> {t('dash.adm.orders')}</h3>
+            <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs font-bold text-blue-400 hover:text-white transition-colors flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"><History size={14}/> {t('dash.adm.history')}</button>
           </div>
           {adminDemandes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-gray-500"><ShoppingCart size={48} className="mb-4 opacity-20" /><p className="font-bold">Aucune demande.</p></div>
+            <div className="flex flex-col items-center justify-center py-8 text-gray-500"><ShoppingCart size={48} className="mb-4 opacity-20" /><p className="font-bold">{t('dash.adm.no_orders')}</p></div>
           ) : (
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {adminDemandes.map((demande) => (
                 <div key={demande.id} className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
                   <div className="mb-2"><span className="text-xs font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded uppercase">{demande.artistes?.nom}</span><h4 className="font-bold text-white text-sm mt-2">{demande.service_title}</h4></div>
                   <div className="rounded bg-black/50 p-3 text-xs text-gray-300 border border-gray-800 font-bold mb-3"><p>{demande.message}</p></div>
-                  <button onClick={() => openValidateModal(demande)} className="flex w-full items-center justify-center gap-2 rounded bg-blue-500 hover:bg-blue-400 py-2 text-xs font-bold text-black transition-all"><CheckCircle size={14} /> Traiter & Facturer</button>
+                  <button onClick={() => openValidateModal(demande)} className="flex w-full items-center justify-center gap-2 rounded bg-blue-500 hover:bg-blue-400 py-2 text-xs font-bold text-black transition-all"><CheckCircle size={14} /> {t('dash.adm.process')}</button>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* COLONNE RETOURS */}
         <div className="rounded-xl border border-orange-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
-          <h3 className="mb-6 text-xl font-bold text-orange-500 flex items-center gap-2"><Bell size={24} className="animate-pulse" /> Retours Mixage</h3>
+          <h3 className="mb-6 text-xl font-bold text-orange-500 flex items-center gap-2"><Bell size={24} className="animate-pulse" /> {t('dash.adm.returns')}</h3>
           <div className="space-y-4">
-            {adminRetours.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-gray-500"><MessageSquare size={48} className="mb-4 opacity-20" /><p className="font-bold">Aucun retour.</p></div> : adminRetours.map((retour) => (
+            {adminRetours.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-gray-500"><MessageSquare size={48} className="mb-4 opacity-20" /><p className="font-bold">{t('dash.adm.no_returns')}</p></div> : adminRetours.map((retour) => (
               <div key={retour.id} className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4">
                 <h4 className="font-bold text-white text-sm">{retour.titre}</h4><span className="text-xs font-bold text-orange-500">{retour.projets?.artistes?.nom}</span>
                 <div className="rounded bg-black/50 p-3 text-xs text-gray-300 mt-2 border border-gray-800 font-bold"><p>{retour.retours_artiste}</p></div>
@@ -244,29 +199,29 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* MODALS ADMIN... */}
-      <Modal isOpen={isValidateModalOpen} onClose={() => setIsValidateModalOpen(false)} title="Facturer le service">
+      {/* MODALS */}
+      <Modal isOpen={isValidateModalOpen} onClose={() => setIsValidateModalOpen(false)} title={t('modal.bill.title')}>
         <form onSubmit={validerEtFacturer} className="space-y-4">
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4 mb-4">
-            <p className="text-sm text-gray-300 font-bold">Artiste : <span className="text-white">{demandeToValidate?.artistes?.nom || 'Inconnu'}</span></p>
-            <p className="text-sm text-gray-300 font-bold">Service : <span className="text-white">{demandeToValidate?.service_title}</span></p>
+            <p className="text-sm text-gray-300 font-bold">{t('modal.bill.artist')} <span className="text-white">{demandeToValidate?.artistes?.nom || t('dash.adm.unknown')}</span></p>
+            <p className="text-sm text-gray-300 font-bold">{t('modal.bill.service')} <span className="text-white">{demandeToValidate?.service_title}</span></p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-bold text-gray-400">Montant final facturé (€) *</label>
+            <label className="mb-1 block text-sm font-bold text-gray-400">{t('modal.bill.amount')}</label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
               <input type="number" step="0.01" min="0" required value={finalPrice} onChange={(e) => setFinalPrice(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-black/50 py-3 pl-10 pr-4 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="ex: 150" />
             </div>
           </div>
           <button type="submit" disabled={isSubmitting} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all">
-            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "Valider & Encaisser"}
+            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : t('modal.bill.validate')}
           </button>
         </form>
       </Modal>
 
-      <Modal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} title="Historique des Services">
+      <Modal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} title={t('modal.history.title')}>
         <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-3">
-          {adminHistorique.length === 0 ? <p className="text-center text-gray-500 font-bold py-6">Aucun service traité.</p> : adminHistorique.map(dem => (
+          {adminHistorique.length === 0 ? <p className="text-center text-gray-500 font-bold py-6">{t('modal.history.empty')}</p> : adminHistorique.map(dem => (
             <div key={dem.id} className="rounded-lg border border-gray-800 bg-gray-900/50 p-4 flex justify-between items-center">
               <div><h4 className="font-bold text-white text-sm">{dem.service_title}</h4><p className="text-xs text-gray-400 font-bold">{dem.artistes?.nom || 'Client'} • {formatDate(dem.created_at)}</p></div>
               <div className="font-bold text-[#4ade80] bg-[#4ade80]/10 px-3 py-1 rounded-lg">+{dem.prix_final} €</div>
