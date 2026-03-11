@@ -3,13 +3,13 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Globe } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/lib/LanguageContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang, changeLang } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black p-4">
+    <div className="flex min-h-screen items-center justify-center bg-black p-4 relative">
+      
+      {/* SÉLECTEUR DE LANGUE EN HAUT À DROITE */}
+      <div className="absolute top-6 right-6 flex items-center gap-3 rounded-full border border-gray-800 bg-gray-900/50 px-4 py-2 backdrop-blur-md">
+        <Globe size={16} className="text-gray-500" />
+        <div className="flex gap-3 border-l border-gray-700 pl-3">
+          <button onClick={() => changeLang('fr')} className={`text-xs font-bold transition-colors ${lang === 'fr' ? 'text-[#4ade80]' : 'text-gray-500 hover:text-white'}`}>FR</button>
+          <button onClick={() => changeLang('en')} className={`text-xs font-bold transition-colors ${lang === 'en' ? 'text-[#4ade80]' : 'text-gray-500 hover:text-white'}`}>EN</button>
+          <button onClick={() => changeLang('pt')} className={`text-xs font-bold transition-colors ${lang === 'pt' ? 'text-[#4ade80]' : 'text-gray-500 hover:text-white'}`}>PT</button>
+        </div>
+      </div>
+
       <div className="w-full max-w-md rounded-xl border border-[#4ade80]/30 bg-black/50 p-8 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
         <h1 className="mb-2 text-center text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
           LACAV & me
