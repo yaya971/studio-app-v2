@@ -10,20 +10,20 @@ export default function DashboardPage() {
   const [role, setRole] = useState<'ADMIN' | 'ARTISTE' | null>(null);
   const [loading, setLoading] = useState(true);
   
+  // --- ÉTATS ADMIN ---
   const [adminStats, setAdminStats] = useState({ artistes: 0, projets: 0, sessions: 0, revenus: 0 });
   const [adminRecentSessions, setAdminRecentSessions] = useState<any[]>([]);
   const [adminRetours, setAdminRetours] = useState<any[]>([]);
   const [adminDemandes, setAdminDemandes] = useState<any[]>([]);
   const [adminHistorique, setAdminHistorique] = useState<any[]>([]); 
-
-  const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
-
-  // Modals
   const [isValidateModalOpen, setIsValidateModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [demandeToValidate, setDemandeToValidate] = useState<any>(null);
   const [finalPrice, setFinalPrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // --- ÉTATS ARTISTE ---
+  const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
 
   useEffect(() => { fetchDashboardData(); }, []);
 
@@ -37,8 +37,6 @@ export default function DashboardPage() {
       if (artiste) {
         setRole('ARTISTE');
         const { data: projets } = await supabase.from('projets').select('*, chansons(*)').eq('artiste_id', artiste.id);
-        
-        // CORRECTION : On cherche directement les sessions via l'artiste_id
         const { data: upcomingSessions } = await supabase.from('sessions')
           .select('*, artistes(nom)')
           .eq('artiste_id', artiste.id)
@@ -51,13 +49,7 @@ export default function DashboardPage() {
         setRole('ADMIN');
         const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
         const { count: projetsCount } = await supabase.from('projets').select('*', { count: 'exact', head: true });
-        
-        // CORRECTION : On récupère les sessions avec le bon lien "artistes(nom)"
-        const { count: sessionsCount, data: sessionsData } = await supabase.from('sessions')
-          .select('*, artistes(nom)', { count: 'exact' })
-          .order('date', { ascending: false })
-          .limit(5);
-          
+        const { count: sessionsCount, data: sessionsData } = await supabase.from('sessions').select('*, artistes(nom)', { count: 'exact' }).order('date', { ascending: false }).limit(5);
         const { data: financesData } = await supabase.from('finances').select('amount, type');
         
         let totalRevenus = 0;
@@ -77,45 +69,29 @@ export default function DashboardPage() {
     finally { setLoading(false); }
   }
 
-  const openValidateModal = (demande: any) => {
-    setDemandeToValidate(demande);
-    setFinalPrice('');
-    setIsValidateModalOpen(true);
-  };
-
+  // Fonctions Admin
+  const openValidateModal = (demande: any) => { setDemandeToValidate(demande); setFinalPrice(''); setIsValidateModalOpen(true); };
+  
   const validerEtFacturer = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     const price = parseFloat(finalPrice);
-
-    if (isNaN(price) || price < 0) {
-      alert("Montant invalide.");
-      setIsSubmitting(false);
-      return;
-    }
+    if (isNaN(price) || price < 0) { alert("Montant invalide."); setIsSubmitting(false); return; }
 
     try {
       const { error: updateError } = await supabase.from('demandes_services').update({ status: 'TRAITÉ', prix_final: price }).eq('id', demandeToValidate.id);
-      if (updateError) throw new Error("Erreur mise à jour commande: " + updateError.message);
+      if (updateError) throw new Error("Erreur mise à jour: " + updateError.message);
 
-      let nomArtiste = 'Client Boutique';
-      if (demandeToValidate.artistes) {
-        nomArtiste = Array.isArray(demandeToValidate.artistes) ? demandeToValidate.artistes[0]?.nom : demandeToValidate.artistes.nom;
-      }
-
+      let nomArtiste = demandeToValidate.artistes?.nom || 'Client Boutique';
       if (price > 0) {
         const { error: financeError } = await supabase.from('finances').insert([{
           description: `Boutique : ${demandeToValidate.service_title} (${nomArtiste})`,
-          amount: price,
-          type: 'income',
-          date: new Date().toISOString()
+          amount: price, type: 'income', date: new Date().toISOString()
         }]);
-        if (financeError) throw new Error("Erreur ajout finances: " + financeError.message);
+        if (financeError) throw new Error("Erreur finances: " + financeError.message);
       }
-
       setIsValidateModalOpen(false);
       fetchDashboardData(); 
-
     } catch (err: any) { alert(err.message); } 
     finally { setIsSubmitting(false); }
   };
@@ -124,6 +100,9 @@ export default function DashboardPage() {
 
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-[#4ade80]" size={48} /></div>;
 
+  // ==========================================
+  // VUE STRICTEMENT RÉSERVÉE AUX ARTISTES
+  // ==========================================
   if (role === 'ARTISTE') {
     return (
       <div className="p-4 md:p-8">
@@ -131,7 +110,7 @@ export default function DashboardPage() {
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2"><Folder className="text-[#a855f7]" size={20}/> Mes Projets en cours</h2>
-            {artisteData.projets.length === 0 ? <div className="rounded-xl border border-gray-800 bg-black/50 p-8 text-center text-gray-400">Aucun projet en cours.</div> : artisteData.projets.map(projet => (
+            {artisteData.projets.length === 0 ? <div className="rounded-xl border border-gray-800 bg-black/50 p-8 text-center text-gray-400 font-bold">Aucun projet en cours.</div> : artisteData.projets.map(projet => (
               <div key={projet.id} className="rounded-xl border border-[#a855f7]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
                 <div className="mb-4 flex items-center justify-between"><h3 className="text-2xl font-bold text-white">{projet.title}</h3><span className="text-gray-400 flex items-center gap-1 text-sm font-bold"><Music size={14} /> {projet.chansons?.length || 0} Titres</span></div>
               </div>
@@ -159,7 +138,9 @@ export default function DashboardPage() {
     );
   }
 
-  // ==== VUE ADMIN ====
+  // ==========================================
+  // VUE STRICTEMENT RÉSERVÉE À L'ADMIN
+  // ==========================================
   return (
     <div className="p-4 md:p-8">
       <div className="mb-8"><h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">Tableau de Bord</h1><p className="mt-2 text-gray-400 font-bold">Bienvenue dans votre interface de gestion globale.</p></div>
@@ -172,26 +153,25 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* COLONNE 1 : SESSIONS */}
+        {/* COLONNE SESSIONS */}
         <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
           <h3 className="mb-6 text-xl font-bold text-[#4ade80] flex items-center gap-2"><Clock size={24}/> Sessions Récentes</h3>
           <div className="space-y-4">
             {adminRecentSessions.length === 0 ? <p className="text-gray-400 font-bold">Aucune session.</p> : adminRecentSessions.map((session) => (
               <div key={session.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-                <div className="min-w-0"><h4 className="font-bold text-white truncate">{session.title}</h4><p className="text-sm font-bold text-[#4ade80] truncate">{session.artistes?.nom || 'Artiste inconnu'}</p></div>
+                <div className="min-w-0"><h4 className="font-bold text-white truncate">{session.title}</h4><p className="text-sm font-bold text-[#4ade80] truncate">{session.artistes?.nom || 'Inconnu'}</p></div>
                 <div className="text-xs text-gray-400 font-bold shrink-0 ml-2">{formatDate(session.date)}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* COLONNE 2 : COMMANDES SERVICES */}
+        {/* COLONNE BOUTIQUE */}
         <div className="rounded-xl border border-blue-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-blue-400 flex items-center gap-2"><Store size={24} /> Commandes</h3>
             <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs font-bold text-blue-400 hover:text-white transition-colors flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"><History size={14}/> Historique</button>
           </div>
-          
           {adminDemandes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-gray-500"><ShoppingCart size={48} className="mb-4 opacity-20" /><p className="font-bold">Aucune demande.</p></div>
           ) : (
@@ -200,16 +180,14 @@ export default function DashboardPage() {
                 <div key={demande.id} className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
                   <div className="mb-2"><span className="text-xs font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded uppercase">{demande.artistes?.nom}</span><h4 className="font-bold text-white text-sm mt-2">{demande.service_title}</h4></div>
                   <div className="rounded bg-black/50 p-3 text-xs text-gray-300 border border-gray-800 font-bold mb-3"><p>{demande.message}</p></div>
-                  <button onClick={() => openValidateModal(demande)} className="flex w-full items-center justify-center gap-2 rounded bg-blue-500 hover:bg-blue-400 py-2 text-xs font-bold text-black transition-all">
-                    <CheckCircle size={14} /> Traiter & Facturer
-                  </button>
+                  <button onClick={() => openValidateModal(demande)} className="flex w-full items-center justify-center gap-2 rounded bg-blue-500 hover:bg-blue-400 py-2 text-xs font-bold text-black transition-all"><CheckCircle size={14} /> Traiter & Facturer</button>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* COLONNE 3 : RETOURS MIXAGE */}
+        {/* COLONNE RETOURS */}
         <div className="rounded-xl border border-orange-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
           <h3 className="mb-6 text-xl font-bold text-orange-500 flex items-center gap-2"><Bell size={24} className="animate-pulse" /> Retours Mixage</h3>
           <div className="space-y-4">
@@ -223,7 +201,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* MODAL : VALIDER UNE COMMANDE */}
+      {/* MODALS ADMIN... */}
       <Modal isOpen={isValidateModalOpen} onClose={() => setIsValidateModalOpen(false)} title="Facturer le service">
         <form onSubmit={validerEtFacturer} className="space-y-4">
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4 mb-4">
@@ -243,27 +221,16 @@ export default function DashboardPage() {
         </form>
       </Modal>
 
-      {/* MODAL : HISTORIQUE DES COMMANDES */}
       <Modal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} title="Historique des Services">
         <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-3">
-          {adminHistorique.length === 0 ? (
-            <p className="text-center text-gray-500 font-bold py-6">Aucun service traité pour le moment.</p>
-          ) : (
-            adminHistorique.map(dem => (
-              <div key={dem.id} className="rounded-lg border border-gray-800 bg-gray-900/50 p-4 flex justify-between items-center">
-                <div>
-                  <h4 className="font-bold text-white text-sm">{dem.service_title}</h4>
-                  <p className="text-xs text-gray-400 font-bold">{dem.artistes?.nom || 'Client'} • {formatDate(dem.created_at)}</p>
-                </div>
-                <div className="font-bold text-[#4ade80] bg-[#4ade80]/10 px-3 py-1 rounded-lg">
-                  +{dem.prix_final} €
-                </div>
-              </div>
-            ))
-          )}
+          {adminHistorique.length === 0 ? <p className="text-center text-gray-500 font-bold py-6">Aucun service traité.</p> : adminHistorique.map(dem => (
+            <div key={dem.id} className="rounded-lg border border-gray-800 bg-gray-900/50 p-4 flex justify-between items-center">
+              <div><h4 className="font-bold text-white text-sm">{dem.service_title}</h4><p className="text-xs text-gray-400 font-bold">{dem.artistes?.nom || 'Client'} • {formatDate(dem.created_at)}</p></div>
+              <div className="font-bold text-[#4ade80] bg-[#4ade80]/10 px-3 py-1 rounded-lg">+{dem.prix_final} €</div>
+            </div>
+          ))}
         </div>
       </Modal>
-
     </div>
   );
 }
