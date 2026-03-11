@@ -24,7 +24,9 @@ export default function DashboardPage() {
 
   // --- ÉTATS ARTISTE ---
   const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
-  const [showPwaPrompt, setShowPwaPrompt] = useState(false); // NOUVEAU : État de la notification
+  
+  // NOUVEAU : État de la notification mobile
+  const [showPwaPrompt, setShowPwaPrompt] = useState(false); 
 
   useEffect(() => { fetchDashboardData(); }, []);
 
@@ -47,12 +49,12 @@ export default function DashboardPage() {
 
         setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: upcomingSessions || [] });
 
-        // NOUVEAU : On vérifie si c'est la première connexion pour afficher l'astuce mobile
+        // AFFICHAGE IMMÉDIAT ET FORCÉ DU POP-UP
         if (typeof window !== 'undefined') {
-          const hasSeenPrompt = localStorage.getItem('hasSeenAppPrompt');
+          // On utilise "_V2" pour forcer l'affichage même si tu avais déjà fait des tests
+          const hasSeenPrompt = localStorage.getItem('hasSeenAppPrompt_V2');
           if (!hasSeenPrompt) {
-            // On attend 1.5s pour que ça fasse plus naturel
-            setTimeout(() => setShowPwaPrompt(true), 1500);
+            setShowPwaPrompt(true); // Zéro délai, apparition instantanée
           }
         }
 
@@ -80,9 +82,9 @@ export default function DashboardPage() {
     finally { setLoading(false); }
   }
 
-  // Fermer la notification et s'en souvenir
+  // Fonction pour fermer définitivement le pop-up
   const closePwaPrompt = () => {
-    localStorage.setItem('hasSeenAppPrompt', 'true');
+    localStorage.setItem('hasSeenAppPrompt_V2', 'true');
     setShowPwaPrompt(false);
   };
 
@@ -152,11 +154,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* NOUVEAU : MODAL D'INSTALLATION MOBILE */}
+        {/* POP-UP MOBILE - BLOQUÉ TANT QU'ON NE CLIQUE PAS */}
         <Modal isOpen={showPwaPrompt} onClose={closePwaPrompt} title="Astuce de Pro 📱">
           <div className="space-y-4">
             <p className="text-gray-300 font-bold text-sm">
-              Pour une expérience optimale, installe <span className="text-[#a855f7]">LACAV & me</span> directement sur l'écran d'accueil de ton téléphone (comme une vraie appli) !
+              Pour une expérience optimale, installe <span className="text-[#a855f7]">LACAV & me</span> directement sur l'écran d'accueil de ton téléphone !
             </p>
             
             <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
@@ -170,7 +172,7 @@ export default function DashboardPage() {
             </div>
 
             <button onClick={closePwaPrompt} className="w-full mt-4 flex items-center justify-center gap-2 bg-[#a855f7] text-white font-bold py-3 rounded-lg hover:bg-[#a855f7]/90 transition-all hover:scale-[1.02]">
-              <Smartphone size={20} /> C'est compris !
+              <Smartphone size={20} /> J'AI COMPRIS
             </button>
           </div>
         </Modal>
