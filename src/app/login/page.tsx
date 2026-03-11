@@ -27,9 +27,9 @@ export default function LoginPage() {
 
     if (error) {
       if (error.message.includes("Email not confirmed")) {
-        setError("Veuillez confirmer votre adresse email avant de vous connecter.");
+        setError(t('auth.err_confirm'));
       } else {
-        setError(error.message === "Invalid login credentials" ? "Email ou mot de passe incorrect." : error.message);
+        setError(error.message === "Invalid login credentials" ? t('auth.err_invalid') : error.message);
       }
       setLoading(false);
     } else {
@@ -94,7 +94,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 flex flex-col items-center gap-4 text-sm font-bold text-gray-400">
-          <button className="hover:text-white transition-colors">Mot de passe oublié ?</button>
+          <button className="hover:text-white transition-colors">{t('auth.forgot_pwd')}</button>
           
           <div className="w-full border-t border-gray-800 pt-6 text-center">
             {t('auth.no_account')} <br/>
