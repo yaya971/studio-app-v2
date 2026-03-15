@@ -2,7 +2,7 @@
 ╔══════════════════════════════════════════════════════════════════════╗
 ║   POLY-TRADER PRO v41.0 — LE CLASSIQUE MILLIMÉTRÉ (STABILITÉ)        ║
 ║                                                                      ║
-║   • Rythme lent (15s) + Timeframes dynamiques (5m, 15m, 1h, 4h).     ║
+║   • Scalping Ultra-Rapide + Timeframes dynamiques (5m, 15m, 1h, 4h). ║
 ║   • Balance Exacte réintégrée : Lit les parts réelles reçues via     ║
 ║     l'API avant de poser le TP ou de vendre en urgence.              ║
 ║   • Fini les blocages à cause des dixièmes de parts manquantes.      ║
@@ -234,31 +234,32 @@ class PolyTraderPro(ctk.CTk):
         return 0.0
 
     def _vendre_urgence(self, poly, token_id, qte_reelle):
-        """ Vend la quantité RÉELLE au prix du carnet d'ordres """
+        """ Vend la quantité RÉELLE au prix du carnet d'ordres en ré-actualisant le prix """
         if qte_reelle < 1.0:
             self._log("⚠️ Aucune part à vendre en urgence.")
             return False
 
+        qv = round(math.floor(qte_reelle * 10) / 10.0, 1)
+
         try:
-            bks = requests.get(f"https://clob.polymarket.com/book?token_id={token_id}", timeout=3).json()
-            bids = bks.get("bids", [])
-            if not bids:
-                self._log("❌ Aucun acheteur en face. Vente impossible pour l'instant.")
-                return False
-
-            px_vente = round(max(float(b["price"]) for b in bids) - 0.005, 3)
-            if px_vente < 0.001: px_vente = 0.001
-            # ON UTILISE LA QUANTITÉ EXACTE ARRONDIE
-            qv = round(math.floor(qte_reelle * 10) / 10.0, 1)
-
-            for _ in range(4):
+            for attempt in range(4):
                 if not self.is_running.is_set(): return False
                 try:
+                    bks = requests.get(f"https://clob.polymarket.com/book?token_id={token_id}", timeout=3).json()
+                    bids = bks.get("bids", [])
+                    if not bids:
+                        self._log(f"❌ (Tentative {attempt+1}) Aucun acheteur. Attente...")
+                        time.sleep(2.0)
+                        continue
+
+                    px_vente = round(max(float(b["price"]) for b in bids) - 0.005, 3)
+                    if px_vente < 0.001: px_vente = 0.001
+
                     poly.post_order(poly.create_order(OrderArgs(price=px_vente, size=qv, side="SELL", token_id=token_id)), OrderType.GTC)
-                    self._log(f"🛡️ Vente exécutée pour {qv} parts au prix du marché ({px_vente:.3f}$).")
+                    self._log(f"🛡️ Vente exécutée pour {qv} parts @ {px_vente:.3f}$.")
                     return True
                 except Exception as e:
-                    self._log(f"❌ Erreur de vente : {str(e)[:60]}")
+                    self._log(f"❌ Erreur de vente (Tentative {attempt+1}) : {str(e)[:60]}")
                     time.sleep(1.5)
         except Exception as e:
             self._log(f"⚠️ Exception dans _vendre_urgence : {str(e)[:60]}")
@@ -279,6 +280,15 @@ class PolyTraderPro(ctk.CTk):
             status = o.get("status", "").upper()
             if status in ("FILLED", "MATCHED"): return True
         except: pass
+        return False
+
+    def _wait_for_fill(self, poly, order_id, timeout=30):
+        """Attend qu'un ordre soit rempli de manière dynamique."""
+        start = time.time()
+        while time.time() - start < timeout and self.is_running.is_set():
+            if self._order_filled(poly, order_id):
+                return True
+            time.sleep(2.0)
         return False
 
     def _moteur(self, cfg):
@@ -314,7 +324,7 @@ class PolyTraderPro(ctk.CTk):
 
         while self.is_running.is_set():
             cycle += 1
-            time.sleep(5.0)
+            time.sleep(2.0)
 
             if self.pnl_net <= -abs(cfg["perte_max"]):
                 self._log(f"🛑 STOP-LOSS GLOBAL : Perte max atteinte (-{abs(cfg['perte_max'])}$). Arrêt du bot.")
@@ -347,14 +357,25 @@ class PolyTraderPro(ctk.CTk):
                     if signal:
                         tk = marche["t_up"] if signal == "UP" else marche["t_down"]
                         bks = requests.get(f"https://clob.polymarket.com/book?token_id={tk}", timeout=3).json()
-                        ask = min(float(a["price"]) for a in bks.get("asks", []))
-                        bid = max(float(b["price"]) for b in bks.get("bids", []))
+                        asks = bks.get("asks", [])
+                        bids = bks.get("bids", [])
+                        if not asks or not bids: continue
 
-                        if ask - bid > 0.04: continue
-                        if ask > 0.70 or ask < 0.30: continue
+                        ask = min(float(a["price"]) for a in asks)
+                        bid = max(float(b["price"]) for b in bids)
+
+                        if ask - bid > 0.02: continue
+                        if ask > 0.80 or ask < 0.20: continue
 
                         budget_alloue = cap * 0.95 if cap <= 15.0 else cap * 0.45
                         q = math.floor((budget_alloue / ask) * 10) / 10.0
+
+                        # Vérification de la liquidité au prix 'ask'
+                        depth_at_ask = sum(float(a["size"]) for a in asks if float(a["price"]) <= ask + 0.001)
+                        if depth_at_ask < q:
+                            self._log(f"⚠️ Liquidité insuffisante ({depth_at_ask:.1f} < {q:.1f}). J'attends.")
+                            continue
+
                         if q < 5.0: continue
 
                         self._log(f"🛒 Achat modéré : {q} parts {signal} @ {ask:.3f}$")
@@ -364,16 +385,15 @@ class PolyTraderPro(ctk.CTk):
                             id_buy = None
                             if isinstance(res_buy, dict): id_buy = res_buy.get("orderID") or res_buy.get("id")
 
-                            self._log("☕ Achat envoyé. Je laisse 15 secondes à la blockchain pour traiter l'approbation...")
-                            time.sleep(15)
+                            self._log(f"🛒 Ordre d'achat {id_buy} envoyé. Attente du remplissage...")
 
-                            if id_buy and not self._order_filled(poly, id_buy):
-                                self._log("⏳ L'achat n'est pas encore totalement rempli. J'attends encore 15s...")
-                                time.sleep(15)
-                                if not self._order_filled(poly, id_buy):
-                                    self._log("⚠️ L'achat prend trop de temps. Je vérifie quand même le solde.")
+                            if id_buy:
+                                filled = self._wait_for_fill(poly, id_buy, timeout=20)
+                                if not filled:
+                                    self._log("⏳ Achat partiel ou lent. Je continue pour vérifier la balance.")
 
-                            # LA BALANCE PARFAITE
+                            # LA BALANCE PARFAITE (on attend un peu que la balance soit mise à jour par l'API positions)
+                            time.sleep(2.0)
                             qte_brute = self._get_position_size(cfg["address"], tk)
                             qte_reelle = math.floor(qte_brute * 10) / 10.0
 
@@ -382,7 +402,7 @@ class PolyTraderPro(ctk.CTk):
                                 continue
 
                             t_id = tk; sens = signal; px_achat = round(ask, 3)
-                            px_tp = round(min(px_achat + 0.02, 0.999), 3); px_sl = round(max(px_achat - 0.06, 0.001), 3); id_sell = None
+                            px_tp = round(min(px_achat + 0.01, 0.999), 3); px_sl = round(max(px_achat - 0.03, 0.001), 3); id_sell = None
 
                             self._log(f"⚖️ Balance confirmée : {qte_reelle} parts. Je pose le Take-Profit à {px_tp:.3f}$...")
 
