@@ -3,23 +3,23 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Grid, Users, Folder, Mic2, Wallet, LogOut } from 'lucide-react';
+import { Grid, Users, Folder, Mic2, Wallet, LogOut, Calendar, ShoppingCart, UserCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/lib/LanguageContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useLanguage();
   const [role, setRole] = useState<'ADMIN' | 'ARTISTE' | null>(null);
 
   useEffect(() => {
     checkUserRole();
 
-    // NOUVEAU : Le radar de Supabase qui écoute les changements de connexion
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      checkUserRole(); // On relance la vérification dès qu'il y a un changement !
+      checkUserRole(); 
     });
 
-    // On éteint le radar si on quitte la page
     return () => {
       authListener.subscription.unsubscribe();
     };
@@ -28,7 +28,6 @@ export default function Sidebar() {
   const checkUserRole = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     
-    // Si personne n'est connecté, on vide le rôle
     if (!session) {
       setRole(null);
       return;
@@ -38,7 +37,7 @@ export default function Sidebar() {
       .from('artistes')
       .select('id')
       .eq('user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
     if (artiste) {
       setRole('ARTISTE');
@@ -55,12 +54,16 @@ export default function Sidebar() {
 
   if (!role) return <div className="flex h-screen w-64 flex-col border-r border-gray-800 bg-black/50 p-6" />;
 
+  // NOTRE NOUVEAU MENU COMPLET ET TRADUIT !
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: Grid, allowed: ['ADMIN', 'ARTISTE'] },
-    { name: 'Artistes', path: '/artistes', icon: Users, allowed: ['ADMIN'] },
-    { name: 'Projets', path: '/projets', icon: Folder, allowed: ['ADMIN', 'ARTISTE'] },
-    { name: 'Sessions', path: '/sessions', icon: Mic2, allowed: ['ADMIN', 'ARTISTE'] },
-    { name: 'Finances', path: '/finances', icon: Wallet, allowed: ['ADMIN'] },
+    { name: t('menu.dashboard'), path: '/', icon: Grid, allowed: ['ADMIN', 'ARTISTE'] },
+    { name: t('menu.reservations'), path: '/reservations', icon: Calendar, allowed: ['ADMIN', 'ARTISTE'] },
+    { name: t('menu.services'), path: '/services', icon: ShoppingCart, allowed: ['ADMIN', 'ARTISTE'] },
+    { name: t('menu.projets'), path: '/projets', icon: Folder, allowed: ['ADMIN', 'ARTISTE'] },
+    { name: t('menu.sessions'), path: '/sessions', icon: Mic2, allowed: ['ADMIN', 'ARTISTE'] },
+    { name: t('menu.artistes'), path: '/artistes', icon: Users, allowed: ['ADMIN'] },
+    { name: t('menu.finances'), path: '/finances', icon: Wallet, allowed: ['ADMIN'] },
+    { name: t('menu.profil'), path: '/profil', icon: UserCircle, allowed: ['ADMIN', 'ARTISTE'] },
   ];
 
   return (
@@ -78,15 +81,15 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 space-y-2 overflow-y-auto pr-2 scrollbar-hide">
         {navItems.filter(item => item.allowed.includes(role)).map((item) => {
           const isActive = pathname === item.path;
           const Icon = item.icon;
           return (
             <Link
-              key={item.name}
+              key={item.path}
               href={item.path}
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-all ${
+              className={`flex items-center gap-3 rounded-lg px-4 py-3 font-bold transition-all ${
                 isActive 
                   ? 'bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/30' 
                   : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -101,10 +104,10 @@ export default function Sidebar() {
 
       <button 
         onClick={handleLogout} 
-        className="mt-auto flex items-center gap-3 rounded-lg px-4 py-3 text-gray-400 transition-all hover:bg-red-500/10 hover:text-red-500"
+        className="mt-6 flex items-center gap-3 rounded-lg px-4 py-3 font-bold text-gray-400 transition-all hover:bg-red-500/10 hover:text-red-500 border border-transparent hover:border-red-500/30"
       >
         <LogOut size={20} />
-        Déconnexion
+        {t('prof.logout')}
       </button>
     </div>
   );
