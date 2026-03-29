@@ -92,10 +92,27 @@ export default function ServicesPage() {
   };
 
   const handleSaveService = async (e: React.FormEvent) => {
-    e.preventDefault(); setIsSubmitting(true);
-    if (editingService) { await supabase.from('services_boutique').update(serviceForm).eq('id', editingService.id); } 
-    else { await supabase.from('services_boutique').insert([serviceForm]); }
-    setIsSubmitting(false); setIsEditModalOpen(false); fetchData();
+    e.preventDefault(); 
+    setIsSubmitting(true);
+    
+    let error;
+    if (editingService) { 
+      const result = await supabase.from('services_boutique').update(serviceForm).eq('id', editingService.id); 
+      error = result.error;
+    } 
+    else { 
+      const result = await supabase.from('services_boutique').insert([serviceForm]); 
+      error = result.error;
+    }
+    
+    setIsSubmitting(false); 
+    
+    if (error) {
+      alert("Erreur lors de la sauvegarde : " + error.message);
+    } else {
+      setIsEditModalOpen(false); 
+      fetchData();
+    }
   };
 
   const handleDeleteService = async (id: string) => {
