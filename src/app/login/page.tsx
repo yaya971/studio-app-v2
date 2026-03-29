@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null); // Nouveau state pour les messages de succès
+  const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -27,6 +27,8 @@ export default function LoginPage() {
     if (error) {
       if (error.message.includes("Email not confirmed")) {
         setError(t('auth.err_confirm'));
+      } else if (error.message.includes("rate limit")) {
+        setError("Trop de tentatives. Veuillez patienter quelques instants.");
       } else {
         setError(error.message === "Invalid login credentials" ? t('auth.err_invalid') : error.message);
       }
@@ -37,7 +39,6 @@ export default function LoginPage() {
     }
   };
 
-  // Nouvelle fonction pour le mot de passe oublié
   const handleResetPassword = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!email) {
@@ -51,7 +52,11 @@ export default function LoginPage() {
     
     setLoading(false);
     if (error) {
-      setError(error.message);
+      if (error.message.includes("rate limit")) {
+        setError("Sécurité anti-spam : Trop de tentatives. Veuillez réessayer dans une heure.");
+      } else {
+        setError(error.message);
+      }
     } else {
       setMsg("Un email de réinitialisation a été envoyé à " + email);
     }
