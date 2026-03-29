@@ -1,234 +1,187 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Users, Folder, Mic2, Wallet, Loader2, Music, Clock, MessageSquare, Bell, Store, CheckCircle, ShoppingCart, History, DollarSign, Smartphone } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import Modal from '@/components/Modal';
-import { useLanguage } from '@/lib/LanguageContext'; // IMPORT DU TRADUCTEUR
 
-export default function DashboardPage() {
-  const router = useRouter();
-  const { t } = useLanguage(); // ON ACTIVE LE TRADUCTEUR
+import React, { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Loader2, Clock, Send, CreditCard, CheckCircle } from 'lucide-react';
+
+export default function Dashboard() {
+  const [demandes, setDemandes] = useState<any[]>([]);
   const [role, setRole] = useState<'ADMIN' | 'ARTISTE' | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  const [adminStats, setAdminStats] = useState({ artistes: 0, projets: 0, sessions: 0, revenus: 0 });
-  const [adminRecentSessions, setAdminRecentSessions] = useState<any[]>([]);
-  const [adminRetours, setAdminRetours] = useState<any[]>([]);
-  const [adminDemandes, setAdminDemandes] = useState<any[]>([]);
-  const [adminHistorique, setAdminHistorique] = useState<any[]>([]); 
-  const [isValidateModalOpen, setIsValidateModalOpen] = useState(false);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [demandeToValidate, setDemandeToValidate] = useState<any>(null);
-  const [finalPrice, setFinalPrice] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [prixInput, setPrixInput] = useState<{ [key: string]: string }>({});
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const [artisteData, setArtisteData] = useState({ nom: '', projets: [] as any[], prochainesSessions: [] as any[] });
-  const [showPwaPrompt, setShowPwaPrompt] = useState(false); 
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
-  useEffect(() => { fetchDashboardData(); }, []);
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
 
-  async function fetchDashboardData() {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.push('/login'); return; }
+    // Vérification du rôle
+    const { data: artiste } = await supabase
+      .from('artistes')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
 
-      const { data: artiste } = await supabase.from('artistes').select('*').eq('user_id', session.user.id).maybeSingle();
+    const currentRole = artiste ? 'ARTISTE' : 'ADMIN';
+    setRole(currentRole);
 
-      if (artiste) {
-        setRole('ARTISTE');
-        const { data: projets } = await supabase.from('projets').select('*, chansons(*)').eq('artiste_id', artiste.id);
-        const { data: upcomingSessions } = await supabase.from('sessions').select('*, artistes(nom)').eq('artiste_id', artiste.id).gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(3);
+    // Récupération des demandes
+    let query = supabase.from('demandes_services').select('*').order('created_at', { ascending: false });
+    
+    // Filtre pour les artistes : voir uniquement leurs demandes
+    if (currentRole === 'ARTISTE') {
+      query = query.eq('artiste_id', artiste.id);
+    }
 
-        setArtisteData({ nom: artiste.nom, projets: projets || [], prochainesSessions: upcomingSessions || [] });
-
-        if (typeof window !== 'undefined') {
-          const hasSeenPrompt = localStorage.getItem('hasSeenAppPrompt_V2');
-          if (!hasSeenPrompt) setShowPwaPrompt(true);
-        }
-      } else {
-        setRole('ADMIN');
-        const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
-        const { count: projetsCount } = await supabase.from('projets').select('*', { count: 'exact', head: true });
-        const { count: sessionsCount, data: sessionsData } = await supabase.from('sessions').select('*, artistes(nom)', { count: 'exact' }).order('date', { ascending: false }).limit(5);
-        const { data: financesData } = await supabase.from('finances').select('amount, type');
-        
-        let totalRevenus = 0;
-        if (financesData) { totalRevenus = financesData.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount), 0); }
-
-        const { data: retoursData } = await supabase.from('chansons').select('id, titre, retours_artiste, projets(title, artistes(nom))').neq('retours_artiste', '').not('retours_artiste', 'is', null);
-        const { data: demandesAttente } = await supabase.from('demandes_services').select('id, service_title, message, created_at, artistes(nom)').eq('status', 'EN ATTENTE').order('created_at', { ascending: false });
-        const { data: demandesTraitees } = await supabase.from('demandes_services').select('id, service_title, message, prix_final, created_at, artistes(nom)').eq('status', 'TRAITÉ').order('created_at', { ascending: false });
-
-        setAdminStats({ artistes: artistesCount || 0, projets: projetsCount || 0, sessions: sessionsCount || 0, revenus: totalRevenus });
-        if (sessionsData) setAdminRecentSessions(sessionsData);
-        if (retoursData) setAdminRetours(retoursData);
-        if (demandesAttente) setAdminDemandes(demandesAttente);
-        if (demandesTraitees) setAdminHistorique(demandesTraitees);
-      }
-    } catch (error) { console.error("Erreur :", error); } 
-    finally { setLoading(false); }
-  }
-
-  const closePwaPrompt = () => { localStorage.setItem('hasSeenAppPrompt_V2', 'true'); setShowPwaPrompt(false); };
-
-  const openValidateModal = (demande: any) => { setDemandeToValidate(demande); setFinalPrice(''); setIsValidateModalOpen(true); };
-  
-  const validerEtFacturer = async (e: React.FormEvent) => {
-    e.preventDefault(); setIsSubmitting(true);
-    const price = parseFloat(finalPrice);
-    if (isNaN(price) || price < 0) { alert("Montant invalide."); setIsSubmitting(false); return; }
-
-    try {
-      const { error: updateError } = await supabase.from('demandes_services').update({ status: 'TRAITÉ', prix_final: price }).eq('id', demandeToValidate.id);
-      if (updateError) throw new Error(updateError.message);
-
-      let nomArtiste = demandeToValidate.artistes?.nom || 'Client';
-      if (price > 0) {
-        await supabase.from('finances').insert([{ description: `Boutique : ${demandeToValidate.service_title} (${nomArtiste})`, amount: price, type: 'income', date: new Date().toISOString() }]);
-      }
-      setIsValidateModalOpen(false); fetchDashboardData(); 
-    } catch (err: any) { alert(err.message); } 
-    finally { setIsSubmitting(false); }
+    const { data } = await query;
+    if (data) setDemandes(data);
+    
+    setLoading(false);
   };
 
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  // ADMIN PROPOSE UN PRIX
+  const handleSendDevis = async (demandeId: string, title: string) => {
+    const prix = prixInput[demandeId];
+    if (!prix || isNaN(Number(prix))) {
+      alert("Veuillez entrer un prix valide (chiffres uniquement).");
+      return;
+    }
 
-  if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-[#4ade80]" size={48} /></div>;
+    setIsProcessing(true);
+    const { error } = await supabase
+      .from('demandes_services')
+      .update({ 
+        prix_propose: Number(prix),
+        statut: 'devis_envoye'
+      })
+      .eq('id', demandeId);
 
-  // ==== VUE ARTISTE ====
-  if (role === 'ARTISTE') {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="mb-8"><h1 className="text-3xl font-bold text-[#a855f7] drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">{t('dash.art.title')}</h1><p className="mt-2 text-gray-400">{t('dash.art.welcome')} <strong className="text-white">{artisteData.nom}</strong>.</p></div>
-        <div className="grid gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2"><Folder className="text-[#a855f7]" size={20}/> {t('dash.art.proj_title')}</h2>
-            {artisteData.projets.length === 0 ? <div className="rounded-xl border border-gray-800 bg-black/50 p-8 text-center text-gray-400 font-bold">{t('dash.art.no_proj')}</div> : artisteData.projets.map(projet => (
-              <div key={projet.id} className="rounded-xl border border-[#a855f7]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-                <div className="mb-4 flex items-center justify-between"><h3 className="text-2xl font-bold text-white">{projet.title}</h3><span className="text-gray-400 flex items-center gap-1 text-sm font-bold"><Music size={14} /> {projet.chansons?.length || 0} {t('dash.art.tracks')}</span></div>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2"><Clock className="text-[#a855f7]" size={20}/> {t('dash.art.sess_title')}</h2>
-            <div className="rounded-xl border border-[#a855f7]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-              {artisteData.prochainesSessions.length === 0 ? (
-                <p className="text-gray-400 text-center text-sm py-4 font-bold">{t('dash.art.no_sess')}</p>
-              ) : (
-                <div className="space-y-4">
-                  {artisteData.prochainesSessions.map(session => (
-                    <div key={session.id} className="border-b border-gray-800 pb-4 mb-4 last:border-0 last:pb-0">
-                      <h4 className="font-bold text-white">{session.title}</h4>
-                      <span className="text-xs text-gray-400 font-bold">{formatDate(session.date)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+    setIsProcessing(false);
 
-        <Modal isOpen={showPwaPrompt} onClose={closePwaPrompt} title={t('pwa.title')}>
-          <div className="space-y-4">
-            <p className="text-gray-300 font-bold text-sm">{t('pwa.desc')}</p>
-            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800"><h4 className="text-white font-bold mb-2">{t('pwa.apple')}</h4></div>
-            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800"><h4 className="text-white font-bold mb-2">{t('pwa.android')}</h4></div>
-            <button onClick={closePwaPrompt} className="w-full mt-4 flex items-center justify-center gap-2 bg-[#a855f7] text-white font-bold py-3 rounded-lg hover:bg-[#a855f7]/90 transition-all">{t('pwa.btn')}</button>
-          </div>
-        </Modal>
-      </div>
-    );
-  }
+    if (error) {
+      alert("Erreur lors de l'envoi du devis : " + error.message);
+    } else {
+      fetchDashboardData(); 
+    }
+  };
 
-  // ==== VUE ADMIN ====
+  // ARTISTE PAIE SON DEVIS
+  const handlePayDevis = async (demandeId: string, title: string, amount: number) => {
+    setIsProcessing(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          title: `Devis validé : ${title}`, 
+          amount: amount * 100 // Stripe prend des centimes
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.url) {
+        window.location.href = data.url; 
+      } else {
+        alert("Erreur Stripe : " + data.error);
+        setIsProcessing(false);
+      }
+    } catch (err) {
+      alert("Erreur de connexion au paiement.");
+      setIsProcessing(false);
+    }
+  };
+
+  if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-[#4ade80]" size={40} /></div>;
+
   return (
-    <div className="p-4 md:p-8">
-      <div className="mb-8"><h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">{t('dash.adm.title')}</h1><p className="mt-2 text-gray-400 font-bold">{t('dash.adm.subtitle')}</p></div>
-
-      <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Users className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">{t('dash.adm.artists')}</p><h2 className="text-3xl font-bold text-white">{adminStats.artistes}</h2></div>
-        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Folder className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">{t('dash.adm.projects')}</p><h2 className="text-3xl font-bold text-white">{adminStats.projets}</h2></div>
-        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Mic2 className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">{t('dash.adm.sessions')}</p><h2 className="text-3xl font-bold text-white">{adminStats.sessions}</h2></div>
-        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6"><Wallet className="text-[#4ade80] mb-2" size={24} /><p className="text-sm text-gray-400 font-bold">{t('dash.adm.revenue')}</p><h2 className="text-3xl font-bold text-[#4ade80]">{adminStats.revenus.toFixed(2)} €</h2></div>
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="mb-10">
+        <h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">
+          Tableau de bord
+        </h1>
+        <p className="mt-2 text-gray-400 font-bold">Bienvenue dans ton espace de gestion.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-xl border border-[#4ade80]/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
-          <h3 className="mb-6 text-xl font-bold text-[#4ade80] flex items-center gap-2"><Clock size={24}/> {t('dash.adm.recent_sess')}</h3>
-          <div className="space-y-4">
-            {adminRecentSessions.length === 0 ? <p className="text-gray-400 font-bold">{t('dash.adm.no_sess')}</p> : adminRecentSessions.map((session) => (
-              <div key={session.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-                <div className="min-w-0"><h4 className="font-bold text-white truncate">{session.title}</h4><p className="text-sm font-bold text-[#4ade80] truncate">{session.artistes?.nom || t('dash.adm.unknown')}</p></div>
-                <div className="text-xs text-gray-400 font-bold shrink-0 ml-2">{formatDate(session.date)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-white mb-6 border-b border-gray-800 pb-4">
+          {role === 'ADMIN' ? 'Demandes de devis clients' : 'Mes devis en cours'}
+        </h2>
 
-        <div className="rounded-xl border border-blue-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-blue-400 flex items-center gap-2"><Store size={24} /> {t('dash.adm.orders')}</h3>
-            <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs font-bold text-blue-400 hover:text-white transition-colors flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"><History size={14}/> {t('dash.adm.history')}</button>
+        {demandes.length === 0 ? (
+          <div className="rounded-xl border border-gray-800 bg-black/50 p-8 text-center text-gray-500 font-bold">
+            Aucune demande de service pour le moment.
           </div>
-          {adminDemandes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-gray-500"><ShoppingCart size={48} className="mb-4 opacity-20" /><p className="font-bold">{t('dash.adm.no_orders')}</p></div>
-          ) : (
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {adminDemandes.map((demande) => (
-                <div key={demande.id} className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
-                  <div className="mb-2"><span className="text-xs font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded uppercase">{demande.artistes?.nom}</span><h4 className="font-bold text-white text-sm mt-2">{demande.service_title}</h4></div>
-                  <div className="rounded bg-black/50 p-3 text-xs text-gray-300 border border-gray-800 font-bold mb-3"><p>{demande.message}</p></div>
-                  <button onClick={() => openValidateModal(demande)} className="flex w-full items-center justify-center gap-2 rounded bg-blue-500 hover:bg-blue-400 py-2 text-xs font-bold text-black transition-all"><CheckCircle size={14} /> {t('dash.adm.process')}</button>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {demandes.map((demande) => (
+              <div key={demande.id} className="rounded-xl border border-gray-800 bg-gray-900/50 p-6 shadow-lg flex flex-col">
+                
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="font-bold text-white text-lg">{demande.service_title}</h3>
+                  {demande.statut === 'en_attente' && <span className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-400/10 px-2 py-1 rounded border border-orange-400/20"><Clock size={12}/> En attente</span>}
+                  {demande.statut === 'devis_envoye' && <span className="flex items-center gap-1 text-xs font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded border border-blue-400/20"><Send size={12}/> Devis envoyé</span>}
+                  {demande.statut === 'paye' && <span className="flex items-center gap-1 text-xs font-bold text-[#4ade80] bg-[#4ade80]/10 px-2 py-1 rounded border border-[#4ade80]/20"><CheckCircle size={12}/> Payé</span>}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        <div className="rounded-xl border border-orange-500/30 bg-black/50 p-6 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
-          <h3 className="mb-6 text-xl font-bold text-orange-500 flex items-center gap-2"><Bell size={24} className="animate-pulse" /> {t('dash.adm.returns')}</h3>
-          <div className="space-y-4">
-            {adminRetours.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-gray-500"><MessageSquare size={48} className="mb-4 opacity-20" /><p className="font-bold">{t('dash.adm.no_returns')}</p></div> : adminRetours.map((retour) => (
-              <div key={retour.id} className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4">
-                <h4 className="font-bold text-white text-sm">{retour.titre}</h4><span className="text-xs font-bold text-orange-500">{retour.projets?.artistes?.nom}</span>
-                <div className="rounded bg-black/50 p-3 text-xs text-gray-300 mt-2 border border-gray-800 font-bold"><p>{retour.retours_artiste}</p></div>
+                <div className="bg-black/50 p-3 rounded-lg border border-gray-800 mb-4 flex-1">
+                  <p className="text-sm text-gray-400 italic">"{demande.message}"</p>
+                </div>
+
+                {/* VUE ADMIN : FIXER LE PRIX */}
+                {role === 'ADMIN' && demande.statut === 'en_attente' && (
+                  <div className="mt-auto border-t border-gray-800 pt-4 flex gap-2">
+                    <input 
+                      type="number" 
+                      placeholder="Prix (€)" 
+                      value={prixInput[demande.id] || ''}
+                      onChange={(e) => setPrixInput({...prixInput, [demande.id]: e.target.value})}
+                      className="w-1/2 rounded-lg border border-gray-700 bg-black px-3 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]"
+                    />
+                    <button 
+                      onClick={() => handleSendDevis(demande.id, demande.service_title)}
+                      disabled={isProcessing}
+                      className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-2 font-bold text-black hover:bg-[#4ade80]/90 transition-all disabled:opacity-50"
+                    >
+                      {isProcessing ? <Loader2 className="animate-spin" size={16} /> : 'Envoyer'}
+                    </button>
+                  </div>
+                )}
+
+                {/* VUE ARTISTE : PAYER LE PRIX */}
+                {role === 'ARTISTE' && demande.statut === 'devis_envoye' && (
+                  <div className="mt-auto border-t border-gray-800 pt-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-gray-400 font-bold text-sm">Prix proposé :</span>
+                      <span className="text-2xl font-bold text-[#4ade80]">{demande.prix_propose} €</span>
+                    </div>
+                    <button 
+                      onClick={() => handlePayDevis(demande.id, demande.service_title, demande.prix_propose)}
+                      disabled={isProcessing}
+                      className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-500 py-3 font-bold text-white hover:bg-blue-600 transition-all disabled:opacity-50"
+                    >
+                      {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CreditCard size={18} /> Payer le devis</>}
+                    </button>
+                  </div>
+                )}
+
+                {/* VUE INFO : DEJA FIXÉ OU PAYÉ */}
+                {role === 'ADMIN' && (demande.statut === 'devis_envoye' || demande.statut === 'paye') && (
+                  <div className="mt-auto border-t border-gray-800 pt-4 text-center">
+                    <span className="text-gray-400 font-bold text-sm">Devis proposé : <span className="text-[#4ade80]">{demande.prix_propose} €</span></span>
+                  </div>
+                )}
+
               </div>
             ))}
           </div>
-        </div>
+        )}
       </div>
-
-      {/* MODALS */}
-      <Modal isOpen={isValidateModalOpen} onClose={() => setIsValidateModalOpen(false)} title={t('modal.bill.title')}>
-        <form onSubmit={validerEtFacturer} className="space-y-4">
-          <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4 mb-4">
-            <p className="text-sm text-gray-300 font-bold">{t('modal.bill.artist')} <span className="text-white">{demandeToValidate?.artistes?.nom || t('dash.adm.unknown')}</span></p>
-            <p className="text-sm text-gray-300 font-bold">{t('modal.bill.service')} <span className="text-white">{demandeToValidate?.service_title}</span></p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold text-gray-400">{t('modal.bill.amount')}</label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input type="number" step="0.01" min="0" required value={finalPrice} onChange={(e) => setFinalPrice(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-black/50 py-3 pl-10 pr-4 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="ex: 150" />
-            </div>
-          </div>
-          <button type="submit" disabled={isSubmitting} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all">
-            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : t('modal.bill.validate')}
-          </button>
-        </form>
-      </Modal>
-
-      <Modal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} title={t('modal.history.title')}>
-        <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-3">
-          {adminHistorique.length === 0 ? <p className="text-center text-gray-500 font-bold py-6">{t('modal.history.empty')}</p> : adminHistorique.map(dem => (
-            <div key={dem.id} className="rounded-lg border border-gray-800 bg-gray-900/50 p-4 flex justify-between items-center">
-              <div><h4 className="font-bold text-white text-sm">{dem.service_title}</h4><p className="text-xs text-gray-400 font-bold">{dem.artistes?.nom || 'Client'} • {formatDate(dem.created_at)}</p></div>
-              <div className="font-bold text-[#4ade80] bg-[#4ade80]/10 px-3 py-1 rounded-lg">+{dem.prix_final} €</div>
-            </div>
-          ))}
-        </div>
-      </Modal>
     </div>
   );
 }
