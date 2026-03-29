@@ -2,10 +2,35 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Image as ImageIcon, Video, Globe, Zap, ShoppingCart, CheckCircle, Loader2, Edit, Trash2, Plus } from 'lucide-react';
+import { 
+  Image as ImageIcon, Video, Globe, Zap, ShoppingCart, 
+  CheckCircle, Loader2, Edit, Trash2, Plus, Music, Mic, Headphones, Star 
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 import { useLanguage } from '@/lib/LanguageContext';
+
+// Liste des icônes disponibles pour tes services
+const AVAILABLE_ICONS = [
+  { id: 'image', component: ImageIcon },
+  { id: 'video', component: Video },
+  { id: 'globe', component: Globe },
+  { id: 'zap', component: Zap },
+  { id: 'cart', component: ShoppingCart },
+  { id: 'music', component: Music },
+  { id: 'mic', component: Mic },
+  { id: 'headphones', component: Headphones },
+  { id: 'star', component: Star }
+];
+
+// Couleurs automatiques pour le design
+const colorStyles = [
+  { color: "text-blue-400", bgColor: "bg-blue-400/10", borderColor: "border-blue-400/30" },
+  { color: "text-purple-400", bgColor: "bg-purple-400/10", borderColor: "border-purple-400/30" },
+  { color: "text-orange-400", bgColor: "bg-orange-400/10", borderColor: "border-orange-400/30" },
+  { color: "text-yellow-400", bgColor: "bg-yellow-400/10", borderColor: "border-yellow-400/30" },
+  { color: "text-[#4ade80]", bgColor: "bg-[#4ade80]/10", borderColor: "border-[#4ade80]/30" },
+];
 
 export default function ServicesPage() {
   const router = useRouter();
@@ -26,18 +51,11 @@ export default function ServicesPage() {
   const [formTab, setFormTab] = useState<'fr' | 'en' | 'pt'>('fr');
   
   const [serviceForm, setServiceForm] = useState({ 
+    icon: 'image',
     title: '', description: '', price: '',
     title_en: '', description_en: '', price_en: '',
     title_pt: '', description_pt: '', price_pt: ''
   });
-
-  const serviceStyles = [
-    { icon: ImageIcon, color: "text-blue-400", bgColor: "bg-blue-400/10", borderColor: "border-blue-400/30" },
-    { icon: Video, color: "text-purple-400", bgColor: "bg-purple-400/10", borderColor: "border-purple-400/30" },
-    { icon: Globe, color: "text-orange-400", bgColor: "bg-orange-400/10", borderColor: "border-orange-400/30" },
-    { icon: Zap, color: "text-yellow-400", bgColor: "bg-yellow-400/10", borderColor: "border-yellow-400/30" },
-    { icon: ShoppingCart, color: "text-[#4ade80]", bgColor: "bg-[#4ade80]/10", borderColor: "border-[#4ade80]/30" },
-  ];
 
   useEffect(() => { fetchData(); }, [router]);
 
@@ -76,10 +94,12 @@ export default function ServicesPage() {
     setEditingService(service);
     setFormTab('fr');
     setServiceForm(service ? { 
+      icon: service.icon || 'image',
       title: service.title || '', description: service.description || '', price: service.price || '',
       title_en: service.title_en || '', description_en: service.description_en || '', price_en: service.price_en || '',
       title_pt: service.title_pt || '', description_pt: service.description_pt || '', price_pt: service.price_pt || ''
     } : { 
+      icon: 'image',
       title: '', description: '', price: '',
       title_en: '', description_en: '', price_en: '',
       title_pt: '', description_pt: '', price_pt: ''
@@ -128,8 +148,10 @@ export default function ServicesPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {services.map((service, index) => {
-          const style = serviceStyles[index % serviceStyles.length];
-          const Icon = style.icon;
+          const style = colorStyles[index % colorStyles.length];
+          const iconObj = AVAILABLE_ICONS.find(i => i.id === service.icon) || AVAILABLE_ICONS[0];
+          const IconComponent = iconObj.component;
+          
           const displayTitle = getLocalizedField(service, 'title');
           const displayDesc = getLocalizedField(service, 'description');
           const displayPrice = getLocalizedField(service, 'price');
@@ -143,7 +165,7 @@ export default function ServicesPage() {
                 </div>
               )}
               <div>
-                <div className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl ${style.bgColor} ${style.borderColor} border`}><Icon size={28} className={style.color} /></div>
+                <div className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl ${style.bgColor} ${style.borderColor} border`}><IconComponent size={28} className={style.color} /></div>
                 <h3 className="mb-2 text-xl font-bold text-white pr-12">{displayTitle}</h3>
                 <p className="text-sm font-bold text-gray-400 leading-relaxed mb-6">{displayDesc}</p>
               </div>
@@ -156,6 +178,7 @@ export default function ServicesPage() {
         })}
       </div>
 
+      {/* MODAL COMMANDE */}
       <Modal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} title={t('srv.modal.order_title')}>
         {isSent ? (
           <div className="py-8 text-center flex flex-col items-center"><CheckCircle size={64} className="text-[#4ade80] mb-4" /><h3 className="text-xl font-bold text-white mb-2">{t('srv.modal.sent')}</h3><p className="text-gray-400 font-bold">{t('srv.modal.contact_soon')}</p></div>
@@ -170,7 +193,30 @@ export default function ServicesPage() {
         )}
       </Modal>
 
+      {/* MODAL AJOUT/ÉDITION */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={editingService ? t('srv.modal.edit_title') : t('srv.modal.new_title')}>
+        
+        {/* SÉLECTEUR D'ICÔNE */}
+        <div className="mb-6">
+          <label className="mb-2 block text-sm font-bold text-gray-400">Icône du service</label>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {AVAILABLE_ICONS.map((iconObj) => {
+              const Icon = iconObj.component;
+              const isSelected = serviceForm.icon === iconObj.id;
+              return (
+                <button 
+                  key={iconObj.id} type="button" 
+                  onClick={() => setServiceForm({...serviceForm, icon: iconObj.id})}
+                  className={`flex shrink-0 items-center justify-center h-12 w-12 rounded-lg border transition-all ${isSelected ? 'border-[#4ade80] bg-[#4ade80]/20 text-[#4ade80]' : 'border-gray-700 bg-black/50 text-gray-400 hover:border-gray-500 hover:text-white'}`}
+                >
+                  <Icon size={24} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ONGLETS DE LANGUE */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 pb-4">
           <button type="button" onClick={() => setFormTab('fr')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formTab === 'fr' ? 'bg-[#4ade80] text-black' : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-gray-800'}`}>🇫🇷 Français</button>
           <button type="button" onClick={() => setFormTab('en')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formTab === 'en' ? 'bg-[#4ade80] text-black' : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-gray-800'}`}>🇬🇧 English</button>
@@ -181,50 +227,23 @@ export default function ServicesPage() {
           
           {/* CHAMPS FRANÇAIS */}
           <div className={formTab === 'fr' ? 'space-y-4 block' : 'hidden'}>
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-400">Titre (FR) *</label>
-              <input type="text" required={formTab === 'fr'} value={serviceForm.title} onChange={(e) => setServiceForm({...serviceForm, title: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-400">Description (FR) *</label>
-              <textarea required={formTab === 'fr'} value={serviceForm.description} onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-400">Prix (FR) *</label>
-              <input type="text" required={formTab === 'fr'} value={serviceForm.price} onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" />
-            </div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Titre (FR) *</label><input type="text" required={formTab === 'fr'} value={serviceForm.title} onChange={(e) => setServiceForm({...serviceForm, title: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Description (FR) *</label><textarea required={formTab === 'fr'} value={serviceForm.description} onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} /></div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Prix (FR) *</label><input type="text" required={formTab === 'fr'} value={serviceForm.price} onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
           </div>
 
           {/* CHAMPS ANGLAIS */}
           <div className={formTab === 'en' ? 'space-y-4 block' : 'hidden'}>
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-400">Titre (EN)</label>
-              <input type="text" value={serviceForm.title_en} onChange={(e) => setServiceForm({...serviceForm, title_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-400">Description (EN)</label>
-              <textarea value={serviceForm.description_en} onChange={(e) => setServiceForm({...serviceForm, description_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-400">Prix (EN)</label>
-              <input type="text" value={serviceForm.price_en} onChange={(e) => setServiceForm({...serviceForm, price_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" />
-            </div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Titre (EN)</label><input type="text" value={serviceForm.title_en} onChange={(e) => setServiceForm({...serviceForm, title_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Description (EN)</label><textarea value={serviceForm.description_en} onChange={(e) => setServiceForm({...serviceForm, description_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} /></div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Prix (EN)</label><input type="text" value={serviceForm.price_en} onChange={(e) => setServiceForm({...serviceForm, price_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
           </div>
 
           {/* CHAMPS PORTUGAIS */}
           <div className={formTab === 'pt' ? 'space-y-4 block' : 'hidden'}>
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-400">Titre (PT)</label>
-              <input type="text" value={serviceForm.title_pt} onChange={(e) => setServiceForm({...serviceForm, title_pt: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-400">Description (PT)</label>
-              <textarea value={serviceForm.description_pt} onChange={(e) => setServiceForm({...serviceForm, description_pt: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-400">Prix (PT)</label>
-              <input type="text" value={serviceForm.price_pt} onChange={(e) => setServiceForm({...serviceForm, price_pt: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" />
-            </div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Titre (PT)</label><input type="text" value={serviceForm.title_pt} onChange={(e) => setServiceForm({...serviceForm, title_pt: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Description (PT)</label><textarea value={serviceForm.description_pt} onChange={(e) => setServiceForm({...serviceForm, description_pt: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} /></div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Prix (PT)</label><input type="text" value={serviceForm.price_pt} onChange={(e) => setServiceForm({...serviceForm, price_pt: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
           </div>
           
           <button type="submit" disabled={isSubmitting} className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all">
