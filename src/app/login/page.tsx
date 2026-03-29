@@ -13,17 +13,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null); // Nouveau state pour les messages de succès
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setMsg(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       if (error.message.includes("Email not confirmed")) {
@@ -38,10 +37,29 @@ export default function LoginPage() {
     }
   };
 
+  // Nouvelle fonction pour le mot de passe oublié
+  const handleResetPassword = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Veuillez saisir votre adresse email ci-dessus avant de cliquer.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setMsg("Un email de réinitialisation a été envoyé à " + email);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-black p-4 relative">
       
-      {/* SÉLECTEUR DE LANGUE EN HAUT À DROITE */}
       <div className="absolute top-6 right-6 flex items-center gap-3 rounded-full border border-gray-800 bg-gray-900/50 px-4 py-2 backdrop-blur-md">
         <Globe size={16} className="text-gray-500" />
         <div className="flex gap-3 border-l border-gray-700 pl-3">
@@ -63,6 +81,12 @@ export default function LoginPage() {
           </div>
         )}
 
+        {msg && (
+          <div className="mb-6 rounded-lg border border-[#4ade80]/50 bg-[#4ade80]/10 p-3 text-sm font-bold text-[#4ade80] text-center">
+            {msg}
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-bold text-gray-400">{t('auth.email')}</label>
@@ -81,7 +105,6 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-white font-bold focus:border-[#4ade80] focus:outline-none transition-all"
-              required
             />
           </div>
           <button
@@ -94,7 +117,9 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 flex flex-col items-center gap-4 text-sm font-bold text-gray-400">
-          <button className="hover:text-white transition-colors">{t('auth.forgot_pwd')}</button>
+          <button onClick={handleResetPassword} disabled={loading} className="hover:text-white transition-colors">
+            {t('auth.forgot_pwd')}
+          </button>
           
           <div className="w-full border-t border-gray-800 pt-6 text-center">
             {t('auth.no_account')} <br/>
