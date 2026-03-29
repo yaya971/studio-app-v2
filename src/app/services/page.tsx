@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Image as ImageIcon, Video, Globe, Zap, ShoppingCart, 
-  CheckCircle, Loader2, Edit, Trash2, Plus, Music, Mic, Headphones, Star 
+  CheckCircle, Loader2, Edit, Trash2, Plus, Music, Mic, Headphones, Star, CreditCard
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
@@ -34,6 +34,9 @@ export default function ServicesPage() {
   const [currentArtisteId, setCurrentArtisteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Notifications Stripe
+  const [paymentStatus, setPaymentStatus] = useState<'success' | 'canceled' | null>(null);
+
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<any>(null);
   const [message, setMessage] = useState('');
@@ -51,7 +54,18 @@ export default function ServicesPage() {
     title_pt: '', description_pt: '', price_pt: ''
   });
 
-  useEffect(() => { fetchData(); }, [router]);
+  useEffect(() => { 
+    fetchData(); 
+    
+    // Détecte si on revient de Stripe avec un succès ou une annulation
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('success')) {
+      setPaymentStatus('success');
+    }
+    if (query.get('canceled')) {
+      setPaymentStatus('canceled');
+    }
+  }, [router]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -73,15 +87,68 @@ export default function ServicesPage() {
     return service[field] || '';
   };
 
-  const handleOpenOrderModal = (service: any) => { setSelectedService(service); setIsSent(false); setMessage(''); setIsOrderModalOpen(true); };
+  const handleOpenOrderModal = (service: any) => { 
+    setSelectedService(service); 
+    setIsSent(false); 
+    setMessage(''); 
+    setIsOrderModalOpen(true); 
+  };
 
   const handleSendRequest = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!currentArtisteId) return;
+    e.preventDefault(); 
+    if (!currentArtisteId || !selectedService) return;
     setIsSubmitting(true);
+
     const serviceTitle = getLocalizedField(selectedService, 'title');
-    const { error } = await supabase.from('demandes_services').insert([{ artiste_id: currentArtisteId, service_title: serviceTitle, message: message }]);
-    setIsSubmitting(false);
-    if (!error) { setIsSent(true); setTimeout(() => setIsOrderModalOpen(false), 3000); }
+    const servicePriceStr = getLocalizedField(selectedService, 'price');
+
+    // 1. On sauvegarde d'abord la demande dans la base de données
+    const { error: dbError } = await supabase.from('demandes_services').insert([{ 
+      artiste_id: currentArtisteId, 
+      service_title: serviceTitle, 
+      message: message 
+    }]);
+
+    if (dbError) {
+      alert("Erreur d'envoi : " + dbError.message);
+      setIsSubmitting(false);
+      return;
+    }
+
+    // 2. On cherche s'il y a un chiffre dans le prix
+    const priceMatch = String(servicePriceStr).match(/\d+/);
+    const amountInEuros = priceMatch ? parseInt(priceMatch[0], 10) : 0;
+
+    // 3. Si le prix est supérieur à 0, on lance Stripe !
+    if (amountInEuros > 0) {
+      try {
+        const res = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            title: serviceTitle, 
+            amount: amountInEuros * 100 // Stripe compte en centimes
+          }),
+        });
+        
+        const data = await res.json();
+        
+        if (data.url) {
+          window.location.href = data.url; 
+        } else {
+          alert("Erreur Stripe : " + data.error);
+          setIsSubmitting(false);
+        }
+      } catch (err) {
+        alert("Erreur de connexion au paiement.");
+        setIsSubmitting(false);
+      }
+    } else {
+      // 4. Si c'est "Sur devis", on s'arrête là avec succès.
+      setIsSubmitting(false);
+      setIsSent(true);
+      setTimeout(() => setIsOrderModalOpen(false), 3000);
+    }
   };
 
   const openEditModal = (service: any = null) => {
@@ -104,7 +171,6 @@ export default function ServicesPage() {
   const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault(); 
     setIsSubmitting(true);
-    
     let error;
     if (editingService) { 
       const result = await supabase.from('services_boutique').update(serviceForm).eq('id', editingService.id); 
@@ -113,7 +179,6 @@ export default function ServicesPage() {
       const result = await supabase.from('services_boutique').insert([serviceForm]); 
       error = result.error;
     }
-    
     setIsSubmitting(false); 
     if (error) { alert("Erreur lors de la sauvegarde : " + error.message); } 
     else { setIsEditModalOpen(false); fetchData(); }
@@ -129,6 +194,26 @@ export default function ServicesPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      
+      {paymentStatus === 'success' && (
+        <div className="mb-8 flex items-center gap-3 rounded-xl border border-[#4ade80]/50 bg-[#4ade80]/10 p-4 text-[#4ade80]">
+          <CheckCircle size={24} />
+          <div>
+            <h3 className="font-bold">Paiement validé avec succès !</h3>
+            <p className="text-sm">Merci pour ta commande. Nous avons bien reçu ta demande et ton paiement.</p>
+          </div>
+        </div>
+      )}
+
+      {paymentStatus === 'canceled' && (
+        <div className="mb-8 flex items-center gap-3 rounded-xl border border-orange-500/50 bg-orange-500/10 p-4 text-orange-500">
+          <div>
+            <h3 className="font-bold">Paiement annulé</h3>
+            <p className="text-sm">Tu as annulé la transaction. N'hésite pas à revenir quand tu seras prêt.</p>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div><h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">{t('srv.title')}</h1><p className="mt-2 text-gray-400 font-bold">{t('srv.subtitle')}</p></div>
         {isAdmin && (<button onClick={() => openEditModal()} className="flex items-center justify-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black hover:bg-[#4ade80]/90 transition-all"><Plus size={20} /> {t('srv.add')}</button>)}
@@ -170,15 +255,21 @@ export default function ServicesPage() {
             <div className="mb-6 flex items-center gap-4 rounded-xl bg-gray-900/50 p-4 border border-gray-800">
               <div><h4 className="font-bold text-white">{selectedService ? getLocalizedField(selectedService, 'title') : ''}</h4><p className="text-sm font-bold text-[#4ade80]">{selectedService ? getLocalizedField(selectedService, 'price') : ''}</p></div>
             </div>
-            <div><label className="mb-2 block text-sm font-bold text-gray-400">{t('srv.modal.need')}</label><textarea required value={message} onChange={(e) => setMessage(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-black/50 p-4 text-white font-bold focus:outline-none focus:border-[#4ade80] min-h-[120px]" /></div>
-            <button type="submit" disabled={isSubmitting} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all disabled:opacity-50">{isSubmitting ? <Loader2 className="animate-spin" size={20} /> : t('srv.modal.send_btn')}</button>
+            <div>
+              <label className="mb-2 block text-sm font-bold text-gray-400">{t('srv.modal.need')}</label>
+              <textarea required value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Décris ton projet ici..." className="w-full rounded-lg border border-gray-700 bg-black/50 p-4 text-white font-bold focus:outline-none focus:border-[#4ade80] min-h-[120px]" />
+            </div>
+            <button type="submit" disabled={isSubmitting} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all disabled:opacity-50">
+              {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (
+                String(selectedService?.price).match(/\d+/) ? <><CreditCard size={20} /> Payer en toute sécurité</> : t('srv.modal.send_btn')
+              )}
+            </button>
           </form>
         )}
       </Modal>
 
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={editingService ? t('srv.modal.edit_title') : t('srv.modal.new_title')}>
-        
-        {/* CORRECTION DES ICÔNES ICI (flex-wrap au lieu de overflow-x) */}
+        {/* Reste du code de la modale d'édition... */}
         <div className="mb-6">
           <label className="mb-2 block text-sm font-bold text-gray-400">Icône du service</label>
           <div className="flex flex-wrap gap-3 pb-2">
@@ -186,11 +277,7 @@ export default function ServicesPage() {
               const Icon = iconObj.component;
               const isSelected = serviceForm.icon === iconObj.id;
               return (
-                <button 
-                  key={iconObj.id} type="button" 
-                  onClick={() => setServiceForm({...serviceForm, icon: iconObj.id})}
-                  className={`flex shrink-0 items-center justify-center h-12 w-12 rounded-lg border transition-all ${isSelected ? 'border-[#4ade80] bg-[#4ade80]/20 text-[#4ade80] scale-110 shadow-[0_0_10px_rgba(74,222,128,0.3)]' : 'border-gray-700 bg-black/50 text-gray-400 hover:border-gray-500 hover:text-white'}`}
-                >
+                <button key={iconObj.id} type="button" onClick={() => setServiceForm({...serviceForm, icon: iconObj.id})} className={`flex shrink-0 items-center justify-center h-12 w-12 rounded-lg border transition-all ${isSelected ? 'border-[#4ade80] bg-[#4ade80]/20 text-[#4ade80] scale-110 shadow-[0_0_10px_rgba(74,222,128,0.3)]' : 'border-gray-700 bg-black/50 text-gray-400 hover:border-gray-500 hover:text-white'}`}>
                   <Icon size={24} />
                 </button>
               );
@@ -208,7 +295,7 @@ export default function ServicesPage() {
           <div className={formTab === 'fr' ? 'space-y-4 block' : 'hidden'}>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Titre (FR) *</label><input type="text" required={formTab === 'fr'} value={serviceForm.title} onChange={(e) => setServiceForm({...serviceForm, title: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Description (FR) *</label><textarea required={formTab === 'fr'} value={serviceForm.description} onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} /></div>
-            <div><label className="mb-1 block text-sm font-bold text-gray-400">Prix (FR) *</label><input type="text" required={formTab === 'fr'} value={serviceForm.price} onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
+            <div><label className="mb-1 block text-sm font-bold text-gray-400">Prix (FR) *</label><input type="text" required={formTab === 'fr'} value={serviceForm.price} onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" placeholder="Ex: 50€ ou Sur devis" /></div>
           </div>
           <div className={formTab === 'en' ? 'space-y-4 block' : 'hidden'}>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Titre (EN)</label><input type="text" value={serviceForm.title_en} onChange={(e) => setServiceForm({...serviceForm, title_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
@@ -226,7 +313,6 @@ export default function ServicesPage() {
           </button>
         </form>
       </Modal>
-
     </div>
   );
 }
