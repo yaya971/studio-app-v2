@@ -33,8 +33,8 @@ export default function Dashboard() {
     // Récupération des demandes
     let query = supabase.from('demandes_services').select('*').order('created_at', { ascending: false });
     
-    // Filtre pour les artistes : voir uniquement leurs demandes
-    if (currentRole === 'ARTISTE') {
+    // Filtre pour les artistes : on rassure TypeScript avec "&& artiste"
+    if (currentRole === 'ARTISTE' && artiste) {
       query = query.eq('artiste_id', artiste.id);
     }
 
