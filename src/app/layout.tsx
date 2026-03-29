@@ -11,14 +11,12 @@ import { LanguageProvider, useLanguage } from "@/lib/LanguageContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// On crée un composant "interne" pour pouvoir utiliser le traducteur
 function InnerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // On appelle notre dictionnaire et la fonction pour changer de langue
   const { t, lang, changeLang } = useLanguage();
 
   useEffect(() => {
@@ -53,11 +51,11 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
     router.push("/login");
   };
 
-  // MENU TRADUIT AUTOMATIQUEMENT
+  // MENU CORRIGÉ (Réservations ouvertes aux deux rôles)
   const navItems = [
     { name: t("menu.dashboard"), href: "/", icon: LayoutDashboard, role: "both" },
-    { name: t("menu.reservations"), href: "/reservations", icon: CalendarDays, role: "artiste" },
     { name: t("menu.services"), href: "/services", icon: Store, role: "both" },
+    { name: t("menu.reservations"), href: "/reservations", icon: CalendarDays, role: "both" }, // <-- La ligne corrigée !
     { name: t("menu.projets"), href: "/projets", icon: Folder, role: "both" },
     { name: t("menu.sessions"), href: "/sessions", icon: Mic2, role: "both" },
     { name: t("menu.artistes"), href: "/artistes", icon: Users, role: "admin" },
@@ -77,7 +75,12 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
           <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col border-r border-gray-800 bg-black p-6 md:flex z-50">
             <div className="mb-12">
               <h1 className="text-2xl font-bold text-[#4ade80] tracking-wider">LACAV & me</h1>
+              {/* Le petit badge ajouté pour info */}
+              <div className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold border ${isAdmin ? 'border-[#4ade80] text-[#4ade80] bg-[#4ade80]/10' : 'border-[#a855f7] text-[#a855f7] bg-[#a855f7]/10'}`}>
+                {isAdmin ? 'ADMIN' : 'ARTISTE'}
+              </div>
             </div>
+            
             <nav className="flex flex-1 flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
@@ -90,7 +93,6 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
               })}
             </nav>
 
-            {/* BOUTONS DE LANGUES (BUREAU) */}
             <div className="mt-auto flex justify-center gap-2 border-t border-gray-800 p-4 pb-0 pt-4 mb-4">
               <button onClick={() => changeLang('fr')} className={`rounded px-2 py-1 text-xs font-bold transition-all ${lang === 'fr' ? 'bg-[#4ade80] text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>FR</button>
               <button onClick={() => changeLang('en')} className={`rounded px-2 py-1 text-xs font-bold transition-all ${lang === 'en' ? 'bg-[#4ade80] text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>EN</button>
@@ -116,7 +118,6 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                 );
               })}
 
-              {/* BOUTONS DE LANGUES (MOBILE) */}
               <div className="flex items-center gap-3 pl-4 border-l border-gray-800 ml-2">
                 <button onClick={() => changeLang('fr')} className={`text-xs font-bold ${lang === 'fr' ? 'text-[#4ade80]' : 'text-gray-500'}`}>FR</button>
                 <button onClick={() => changeLang('en')} className={`text-xs font-bold ${lang === 'en' ? 'text-[#4ade80]' : 'text-gray-500'}`}>EN</button>
@@ -134,7 +135,6 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-// LE COMPOSANT PRINCIPAL QUI ENVELOPPE LE TOUT
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
@@ -144,7 +144,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className={`${inter.className} bg-black text-white min-h-screen pb-20 md:pb-0`}>
-        {/* On charge le dictionnaire ici */}
         <LanguageProvider>
           <InnerLayout>{children}</InnerLayout>
         </LanguageProvider>
