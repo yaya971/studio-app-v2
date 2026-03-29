@@ -42,9 +42,9 @@ export default function Dashboard() {
         // Compter les artistes
         const { count: artistesCount } = await supabase.from('artistes').select('*', { count: 'exact', head: true });
         
-        // Calculer le Chiffre d'Affaires (Finances)
-        const { data: financesData } = await supabase.from('finances').select('montant').eq('type', 'ENTREE');
-        const caTotal = financesData ? financesData.reduce((acc, curr) => acc + (curr.montant || 0), 0) : 0;
+        // Calculer le Chiffre d'Affaires (Finances) - ADAPTÉ À TA BASE (amount)
+        const { data: financesData } = await supabase.from('finances').select('amount').eq('type', 'ENTREE');
+        const caTotal = financesData ? financesData.reduce((acc, curr) => acc + (curr.amount || 0), 0) : 0;
 
         // Compter les projets en cours
         const projetsEnCours = demandesData ? demandesData.filter(d => d.statut === 'en_cours').length : 0;
@@ -88,6 +88,7 @@ export default function Dashboard() {
       .eq('id', demandeId);
 
     alert("Le devis a été envoyé à l'artiste !");
+    setPrixInput({...prixInput, [demandeId]: ''}); // On vide la case après envoi
     await fetchDashboardData();
     setIsProcessing(false);
   };
@@ -101,10 +102,10 @@ export default function Dashboard() {
     // 1. On bloque la commande en "Payé"
     await supabase.from('demandes_services').update({ paiement_statut: 'paye', statut: 'en_cours' }).eq('id', demande.id);
     
-    // 2. On injecte l'argent dans les Finances
+    // 2. On injecte l'argent dans les Finances - ADAPTÉ À TA BASE (description et amount)
     await supabase.from('finances').insert([{
-      titre: `Paiement: ${demande.service_title}`,
-      montant: demande.prix_propose,
+      description: `Paiement: ${demande.service_title}`,
+      amount: demande.prix_propose,
       type: 'ENTREE'
     }]);
 
@@ -234,6 +235,7 @@ export default function Dashboard() {
                         <option value="devis_envoye">Devis envoyé (Attente client)</option>
                         <option value="en_cours">Projet En Cours</option>
                         <option value="termine">Projet Terminé</option>
+                        <option value="annule">Projet Annulé</option>
                       </select>
 
                       {/* Bouton Payé (Irréversible) */}
@@ -263,7 +265,9 @@ export default function Dashboard() {
             ) : (
               demandes.map(demande => (
                 <div key={demande.id} className="bg-gray-900/50 border border-gray-800 p-6 rounded-xl flex flex-col">
-                  <h3 className="font-bold text-white text-lg mb-2">{demande.service_title}</h3>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-white text-lg">{demande.service_title}</h3>
+                  </div>
                   <p className="text-sm text-gray-400 italic mb-6">"{demande.message}"</p>
 
                   <div className="mt-auto border-t border-gray-800 pt-4 space-y-3">
@@ -276,6 +280,7 @@ export default function Dashboard() {
                       )}
                     </div>
 
+                    {/* Si le devis a un prix ET n'est pas payé, on affiche le bouton */}
                     {demande.paiement_statut !== 'paye' && demande.prix_propose > 0 ? (
                       <button 
                         onClick={() => handlePayDevis(demande.service_title, demande.prix_propose)}
