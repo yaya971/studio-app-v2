@@ -10,12 +10,13 @@ import { useLanguage } from '@/lib/LanguageContext';
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang, changeLang } = useLanguage();
   const [role, setRole] = useState<'ADMIN' | 'ARTISTE' | null>(null);
 
   useEffect(() => {
     checkUserRole();
 
+    // Radar Supabase pour vérifier la connexion
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       checkUserRole(); 
     });
@@ -54,11 +55,11 @@ export default function Sidebar() {
 
   if (!role) return <div className="flex h-screen w-64 flex-col border-r border-gray-800 bg-black/50 p-6" />;
 
-  // NOTRE NOUVEAU MENU COMPLET ET TRADUIT !
+  // LISTE COMPLÈTE DES BOUTONS DU MENU
   const navItems = [
     { name: t('menu.dashboard'), path: '/', icon: Grid, allowed: ['ADMIN', 'ARTISTE'] },
-    { name: t('menu.reservations'), path: '/reservations', icon: Calendar, allowed: ['ADMIN', 'ARTISTE'] },
     { name: t('menu.services'), path: '/services', icon: ShoppingCart, allowed: ['ADMIN', 'ARTISTE'] },
+    { name: t('menu.reservations'), path: '/reservations', icon: Calendar, allowed: ['ADMIN', 'ARTISTE'] }, // <- Les réservations sont bien là !
     { name: t('menu.projets'), path: '/projets', icon: Folder, allowed: ['ADMIN', 'ARTISTE'] },
     { name: t('menu.sessions'), path: '/sessions', icon: Mic2, allowed: ['ADMIN', 'ARTISTE'] },
     { name: t('menu.artistes'), path: '/artistes', icon: Users, allowed: ['ADMIN'] },
@@ -102,13 +103,26 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <button 
-        onClick={handleLogout} 
-        className="mt-6 flex items-center gap-3 rounded-lg px-4 py-3 font-bold text-gray-400 transition-all hover:bg-red-500/10 hover:text-red-500 border border-transparent hover:border-red-500/30"
-      >
-        <LogOut size={20} />
-        {t('prof.logout')}
-      </button>
+      {/* SECTION DU BAS : LANGUES + DÉCONNEXION */}
+      <div className="mt-auto border-t border-gray-800 pt-6">
+        
+        {/* Ton sélecteur de langue */}
+        <div className="flex justify-center gap-6 mb-6">
+          <button onClick={() => changeLang('fr')} className={`text-xs font-bold transition-all ${lang === 'fr' ? 'bg-[#4ade80] text-black px-2 py-0.5 rounded' : 'text-gray-500 hover:text-white'}`}>FR</button>
+          <button onClick={() => changeLang('en')} className={`text-xs font-bold transition-all ${lang === 'en' ? 'bg-[#4ade80] text-black px-2 py-0.5 rounded' : 'text-gray-500 hover:text-white'}`}>EN</button>
+          <button onClick={() => changeLang('pt')} className={`text-xs font-bold transition-all ${lang === 'pt' ? 'bg-[#4ade80] text-black px-2 py-0.5 rounded' : 'text-gray-500 hover:text-white'}`}>PT</button>
+        </div>
+
+        {/* Bouton Déconnexion */}
+        <button 
+          onClick={handleLogout} 
+          className="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-bold text-gray-400 transition-all hover:bg-red-500/10 hover:text-red-500"
+        >
+          <LogOut size={20} />
+          {t('prof.logout') || 'Déconnexion'}
+        </button>
+      </div>
+
     </div>
   );
 }
