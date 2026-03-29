@@ -34,7 +34,6 @@ export default function ServicesPage() {
   const [currentArtisteId, setCurrentArtisteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Notifications Stripe
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'canceled' | null>(null);
 
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -57,14 +56,9 @@ export default function ServicesPage() {
   useEffect(() => { 
     fetchData(); 
     
-    // Détecte si on revient de Stripe avec un succès ou une annulation
     const query = new URLSearchParams(window.location.search);
-    if (query.get('success')) {
-      setPaymentStatus('success');
-    }
-    if (query.get('canceled')) {
-      setPaymentStatus('canceled');
-    }
+    if (query.get('success')) setPaymentStatus('success');
+    if (query.get('canceled')) setPaymentStatus('canceled');
   }, [router]);
 
   const fetchData = async () => {
@@ -97,37 +91,38 @@ export default function ServicesPage() {
   const handleSendRequest = async (e: React.FormEvent) => {
     e.preventDefault(); 
     if (!currentArtisteId || !selectedService) return;
-    setIsSubmitting(true);
+    
+    setIsSubmitting(true); // On lance le chargement
 
-    const serviceTitle = getLocalizedField(selectedService, 'title');
-    const servicePriceStr = getLocalizedField(selectedService, 'price');
+    try {
+      const serviceTitle = getLocalizedField(selectedService, 'title');
+      const servicePriceStr = getLocalizedField(selectedService, 'price');
 
-    // 1. On sauvegarde d'abord la demande dans la base de données
-    const { error: dbError } = await supabase.from('demandes_services').insert([{ 
-      artiste_id: currentArtisteId, 
-      service_title: serviceTitle, 
-      message: message 
-    }]);
+      // 1. Sauvegarde dans la base de données
+      const { error: dbError } = await supabase.from('demandes_services').insert([{ 
+        artiste_id: currentArtisteId, 
+        service_title: serviceTitle, 
+        message: message 
+      }]);
 
-    if (dbError) {
-      alert("Erreur d'envoi : " + dbError.message);
-      setIsSubmitting(false);
-      return;
-    }
+      if (dbError) {
+        alert("Erreur de la base de données : " + dbError.message);
+        setIsSubmitting(false);
+        return;
+      }
 
-    // 2. On cherche s'il y a un chiffre dans le prix
-    const priceMatch = String(servicePriceStr).match(/\d+/);
-    const amountInEuros = priceMatch ? parseInt(priceMatch[0], 10) : 0;
+      // 2. Détection du prix
+      const priceMatch = String(servicePriceStr).match(/\d+/);
+      const amountInEuros = priceMatch ? parseInt(priceMatch[0], 10) : 0;
 
-    // 3. Si le prix est supérieur à 0, on lance Stripe !
-    if (amountInEuros > 0) {
-      try {
+      // 3. Paiement Stripe OU Devis
+      if (amountInEuros > 0) {
         const res = await fetch('/api/stripe/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             title: serviceTitle, 
-            amount: amountInEuros * 100 // Stripe compte en centimes
+            amount: amountInEuros * 100 
           }),
         });
         
@@ -139,15 +134,18 @@ export default function ServicesPage() {
           alert("Erreur Stripe : " + data.error);
           setIsSubmitting(false);
         }
-      } catch (err) {
-        alert("Erreur de connexion au paiement.");
+      } else {
+        // 4. C'est un Devis -> On arrête le chargement et on affiche le message de succès
         setIsSubmitting(false);
+        setIsSent(true);
+        setTimeout(() => {
+          setIsOrderModalOpen(false);
+          setIsSent(false); // On nettoie pour la prochaine fois
+        }, 3000);
       }
-    } else {
-      // 4. Si c'est "Sur devis", on s'arrête là avec succès.
+    } catch (err: any) {
+      alert("Une erreur inattendue est survenue : " + err.message);
       setIsSubmitting(false);
-      setIsSent(true);
-      setTimeout(() => setIsOrderModalOpen(false), 3000);
     }
   };
 
@@ -215,8 +213,8 @@ export default function ServicesPage() {
       )}
 
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div><h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">{t('srv.title')}</h1><p className="mt-2 text-gray-400 font-bold">{t('srv.subtitle')}</p></div>
-        {isAdmin && (<button onClick={() => openEditModal()} className="flex items-center justify-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black hover:bg-[#4ade80]/90 transition-all"><Plus size={20} /> {t('srv.add')}</button>)}
+        <div><h1 className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]">{t('srv.title') || 'Services'}</h1><p className="mt-2 text-gray-400 font-bold">{t('srv.subtitle') || 'Découvre nos services'}</p></div>
+        {isAdmin && (<button onClick={() => openEditModal()} className="flex items-center justify-center gap-2 rounded-lg bg-[#4ade80] px-4 py-2 font-bold text-black hover:bg-[#4ade80]/90 transition-all"><Plus size={20} /> {t('srv.add') || 'Ajouter'}</button>)}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -240,36 +238,39 @@ export default function ServicesPage() {
               </div>
               <div className="mt-auto border-t border-gray-800 pt-5">
                 <div className="mb-4 text-lg font-bold text-white">{getLocalizedField(service, 'price')}</div>
-                {!isAdmin && (<button onClick={() => handleOpenOrderModal(service)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 py-3 font-bold text-white transition-all hover:bg-[#4ade80] hover:text-black border border-gray-800 hover:border-[#4ade80]"><ShoppingCart size={18} /> {t('srv.order')}</button>)}
+                {!isAdmin && (<button onClick={() => handleOpenOrderModal(service)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 py-3 font-bold text-white transition-all hover:bg-[#4ade80] hover:text-black border border-gray-800 hover:border-[#4ade80]"><ShoppingCart size={18} /> {t('srv.order') || 'Commander'}</button>)}
               </div>
             </div>
           );
         })}
       </div>
 
-      <Modal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} title={t('srv.modal.order_title')}>
+      <Modal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} title={t('srv.modal.order_title') || 'Commande'}>
         {isSent ? (
-          <div className="py-8 text-center flex flex-col items-center"><CheckCircle size={64} className="text-[#4ade80] mb-4" /><h3 className="text-xl font-bold text-white mb-2">{t('srv.modal.sent')}</h3><p className="text-gray-400 font-bold">{t('srv.modal.contact_soon')}</p></div>
+          <div className="py-8 text-center flex flex-col items-center">
+            <CheckCircle size={64} className="text-[#4ade80] mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Demande envoyée !</h3>
+            <p className="text-gray-400 font-bold">Nous te ferons une proposition très rapidement.</p>
+          </div>
         ) : (
           <form onSubmit={handleSendRequest} className="space-y-4">
             <div className="mb-6 flex items-center gap-4 rounded-xl bg-gray-900/50 p-4 border border-gray-800">
               <div><h4 className="font-bold text-white">{selectedService ? getLocalizedField(selectedService, 'title') : ''}</h4><p className="text-sm font-bold text-[#4ade80]">{selectedService ? getLocalizedField(selectedService, 'price') : ''}</p></div>
             </div>
             <div>
-              <label className="mb-2 block text-sm font-bold text-gray-400">{t('srv.modal.need')}</label>
+              <label className="mb-2 block text-sm font-bold text-gray-400">{t('srv.modal.need') || 'Ton besoin :'}</label>
               <textarea required value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Décris ton projet ici..." className="w-full rounded-lg border border-gray-700 bg-black/50 p-4 text-white font-bold focus:outline-none focus:border-[#4ade80] min-h-[120px]" />
             </div>
             <button type="submit" disabled={isSubmitting} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all disabled:opacity-50">
               {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (
-                String(selectedService?.price).match(/\d+/) ? <><CreditCard size={20} /> Payer en toute sécurité</> : t('srv.modal.send_btn')
+                String(selectedService?.price).match(/\d+/) ? <><CreditCard size={20} /> Payer en toute sécurité</> : (t('srv.modal.send_btn') || 'Envoyer')
               )}
             </button>
           </form>
         )}
       </Modal>
 
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={editingService ? t('srv.modal.edit_title') : t('srv.modal.new_title')}>
-        {/* Reste du code de la modale d'édition... */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={editingService ? (t('srv.modal.edit_title') || 'Modifier') : (t('srv.modal.new_title') || 'Nouveau')}>
         <div className="mb-6">
           <label className="mb-2 block text-sm font-bold text-gray-400">Icône du service</label>
           <div className="flex flex-wrap gap-3 pb-2">
@@ -309,7 +310,7 @@ export default function ServicesPage() {
           </div>
           
           <button type="submit" disabled={isSubmitting} className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4ade80] py-3 font-bold text-black hover:bg-[#4ade80]/90 transition-all">
-            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : t('srv.modal.save_btn')}
+            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (t('srv.modal.save_btn') || 'Enregistrer')}
           </button>
         </form>
       </Modal>
