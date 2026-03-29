@@ -10,20 +10,14 @@ import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 import { useLanguage } from '@/lib/LanguageContext';
 
-// Liste des icônes disponibles pour tes services
 const AVAILABLE_ICONS = [
-  { id: 'image', component: ImageIcon },
-  { id: 'video', component: Video },
-  { id: 'globe', component: Globe },
-  { id: 'zap', component: Zap },
-  { id: 'cart', component: ShoppingCart },
-  { id: 'music', component: Music },
-  { id: 'mic', component: Mic },
-  { id: 'headphones', component: Headphones },
+  { id: 'image', component: ImageIcon }, { id: 'video', component: Video },
+  { id: 'globe', component: Globe }, { id: 'zap', component: Zap },
+  { id: 'cart', component: ShoppingCart }, { id: 'music', component: Music },
+  { id: 'mic', component: Mic }, { id: 'headphones', component: Headphones },
   { id: 'star', component: Star }
 ];
 
-// Couleurs automatiques pour le design
 const colorStyles = [
   { color: "text-blue-400", bgColor: "bg-blue-400/10", borderColor: "border-blue-400/30" },
   { color: "text-purple-400", bgColor: "bg-purple-400/10", borderColor: "border-purple-400/30" },
@@ -115,20 +109,14 @@ export default function ServicesPage() {
     if (editingService) { 
       const result = await supabase.from('services_boutique').update(serviceForm).eq('id', editingService.id); 
       error = result.error;
-    } 
-    else { 
+    } else { 
       const result = await supabase.from('services_boutique').insert([serviceForm]); 
       error = result.error;
     }
     
     setIsSubmitting(false); 
-    
-    if (error) {
-      alert("Erreur lors de la sauvegarde : " + error.message);
-    } else {
-      setIsEditModalOpen(false); 
-      fetchData();
-    }
+    if (error) { alert("Erreur lors de la sauvegarde : " + error.message); } 
+    else { setIsEditModalOpen(false); fetchData(); }
   };
 
   const handleDeleteService = async (id: string) => {
@@ -152,10 +140,6 @@ export default function ServicesPage() {
           const iconObj = AVAILABLE_ICONS.find(i => i.id === service.icon) || AVAILABLE_ICONS[0];
           const IconComponent = iconObj.component;
           
-          const displayTitle = getLocalizedField(service, 'title');
-          const displayDesc = getLocalizedField(service, 'description');
-          const displayPrice = getLocalizedField(service, 'price');
-
           return (
             <div key={service.id} className="flex flex-col justify-between rounded-xl border border-gray-800 bg-black/50 p-6 shadow-[0_0_15px_rgba(0,0,0,0.5)] transition-all hover:border-[#4ade80]/50 hover:bg-black/80 group relative">
               {isAdmin && (
@@ -166,11 +150,11 @@ export default function ServicesPage() {
               )}
               <div>
                 <div className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl ${style.bgColor} ${style.borderColor} border`}><IconComponent size={28} className={style.color} /></div>
-                <h3 className="mb-2 text-xl font-bold text-white pr-12">{displayTitle}</h3>
-                <p className="text-sm font-bold text-gray-400 leading-relaxed mb-6">{displayDesc}</p>
+                <h3 className="mb-2 text-xl font-bold text-white pr-12">{getLocalizedField(service, 'title')}</h3>
+                <p className="text-sm font-bold text-gray-400 leading-relaxed mb-6">{getLocalizedField(service, 'description')}</p>
               </div>
               <div className="mt-auto border-t border-gray-800 pt-5">
-                <div className="mb-4 text-lg font-bold text-white">{displayPrice}</div>
+                <div className="mb-4 text-lg font-bold text-white">{getLocalizedField(service, 'price')}</div>
                 {!isAdmin && (<button onClick={() => handleOpenOrderModal(service)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 py-3 font-bold text-white transition-all hover:bg-[#4ade80] hover:text-black border border-gray-800 hover:border-[#4ade80]"><ShoppingCart size={18} /> {t('srv.order')}</button>)}
               </div>
             </div>
@@ -178,7 +162,6 @@ export default function ServicesPage() {
         })}
       </div>
 
-      {/* MODAL COMMANDE */}
       <Modal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} title={t('srv.modal.order_title')}>
         {isSent ? (
           <div className="py-8 text-center flex flex-col items-center"><CheckCircle size={64} className="text-[#4ade80] mb-4" /><h3 className="text-xl font-bold text-white mb-2">{t('srv.modal.sent')}</h3><p className="text-gray-400 font-bold">{t('srv.modal.contact_soon')}</p></div>
@@ -193,13 +176,12 @@ export default function ServicesPage() {
         )}
       </Modal>
 
-      {/* MODAL AJOUT/ÉDITION */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={editingService ? t('srv.modal.edit_title') : t('srv.modal.new_title')}>
         
-        {/* SÉLECTEUR D'ICÔNE */}
+        {/* CORRECTION DES ICÔNES ICI (flex-wrap au lieu de overflow-x) */}
         <div className="mb-6">
           <label className="mb-2 block text-sm font-bold text-gray-400">Icône du service</label>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex flex-wrap gap-3 pb-2">
             {AVAILABLE_ICONS.map((iconObj) => {
               const Icon = iconObj.component;
               const isSelected = serviceForm.icon === iconObj.id;
@@ -207,7 +189,7 @@ export default function ServicesPage() {
                 <button 
                   key={iconObj.id} type="button" 
                   onClick={() => setServiceForm({...serviceForm, icon: iconObj.id})}
-                  className={`flex shrink-0 items-center justify-center h-12 w-12 rounded-lg border transition-all ${isSelected ? 'border-[#4ade80] bg-[#4ade80]/20 text-[#4ade80]' : 'border-gray-700 bg-black/50 text-gray-400 hover:border-gray-500 hover:text-white'}`}
+                  className={`flex shrink-0 items-center justify-center h-12 w-12 rounded-lg border transition-all ${isSelected ? 'border-[#4ade80] bg-[#4ade80]/20 text-[#4ade80] scale-110 shadow-[0_0_10px_rgba(74,222,128,0.3)]' : 'border-gray-700 bg-black/50 text-gray-400 hover:border-gray-500 hover:text-white'}`}
                 >
                   <Icon size={24} />
                 </button>
@@ -216,7 +198,6 @@ export default function ServicesPage() {
           </div>
         </div>
 
-        {/* ONGLETS DE LANGUE */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 pb-4">
           <button type="button" onClick={() => setFormTab('fr')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formTab === 'fr' ? 'bg-[#4ade80] text-black' : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-gray-800'}`}>🇫🇷 Français</button>
           <button type="button" onClick={() => setFormTab('en')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formTab === 'en' ? 'bg-[#4ade80] text-black' : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-gray-800'}`}>🇬🇧 English</button>
@@ -224,22 +205,16 @@ export default function ServicesPage() {
         </div>
 
         <form onSubmit={handleSaveService} className="space-y-4">
-          
-          {/* CHAMPS FRANÇAIS */}
           <div className={formTab === 'fr' ? 'space-y-4 block' : 'hidden'}>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Titre (FR) *</label><input type="text" required={formTab === 'fr'} value={serviceForm.title} onChange={(e) => setServiceForm({...serviceForm, title: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Description (FR) *</label><textarea required={formTab === 'fr'} value={serviceForm.description} onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} /></div>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Prix (FR) *</label><input type="text" required={formTab === 'fr'} value={serviceForm.price} onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
           </div>
-
-          {/* CHAMPS ANGLAIS */}
           <div className={formTab === 'en' ? 'space-y-4 block' : 'hidden'}>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Titre (EN)</label><input type="text" value={serviceForm.title_en} onChange={(e) => setServiceForm({...serviceForm, title_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Description (EN)</label><textarea value={serviceForm.description_en} onChange={(e) => setServiceForm({...serviceForm, description_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} /></div>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Prix (EN)</label><input type="text" value={serviceForm.price_en} onChange={(e) => setServiceForm({...serviceForm, price_en: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
           </div>
-
-          {/* CHAMPS PORTUGAIS */}
           <div className={formTab === 'pt' ? 'space-y-4 block' : 'hidden'}>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Titre (PT)</label><input type="text" value={serviceForm.title_pt} onChange={(e) => setServiceForm({...serviceForm, title_pt: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" /></div>
             <div><label className="mb-1 block text-sm font-bold text-gray-400">Description (PT)</label><textarea value={serviceForm.description_pt} onChange={(e) => setServiceForm({...serviceForm, description_pt: e.target.value})} className="w-full rounded-lg border border-gray-700 bg-black/50 px-4 py-2 text-white font-bold focus:outline-none focus:border-[#4ade80]" rows={3} /></div>
