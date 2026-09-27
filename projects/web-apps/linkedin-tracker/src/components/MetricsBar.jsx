@@ -5,204 +5,182 @@ import {
   Clock, 
   Trophy, 
   AlertTriangle,
-  CheckCircle,
-  Calendar
+  CheckCircle2,
+  XCircle,
+  HelpCircle
 } from 'lucide-react';
 import { getDaysSince } from '../constants';
 
 export default function MetricsBar({ applications = [], onFilterByFollowUp }) {
   const total = applications.length;
 
-  const interviews = applications.filter(a => 
-    ['phone_screen', 'tech_assessment', 'final_interview'].includes(a.status)
+  // Has response (Yes): phone screen, tech assessment, final interview, offer, rejected
+  const responsesReceived = applications.filter(a => 
+    ['phone_screen', 'tech_assessment', 'final_interview', 'offer', 'rejected'].includes(a.status)
   ).length;
 
-  const offers = applications.filter(a => a.status === 'offer').length;
+  // Pending response (No): applied or reviewing
+  const pendingResponses = applications.filter(a => 
+    ['applied', 'reviewing'].includes(a.status)
+  ).length;
 
-  // Follow-ups needed: applied or reviewing and > 7 days since last activity or applied date
+  const interviewsAndOffers = applications.filter(a => 
+    ['phone_screen', 'tech_assessment', 'final_interview', 'offer'].includes(a.status)
+  ).length;
+
+  // Needs follow-up: pending and >= 7 days
   const needsFollowUp = applications.filter(a => {
-    if (['offer', 'rejected'].includes(a.status)) return false;
-    const days = getDaysSince(a.lastActivityDate || a.appliedDate);
+    if (!['applied', 'reviewing'].includes(a.status)) return false;
+    const days = getDaysSince(a.appliedDate);
     return days >= 7;
   });
 
-  const responseRate = total > 0 ? Math.round(((interviews + offers) / total) * 100) : 0;
+  const responseRate = total > 0 ? Math.round((responsesReceived / total) * 100) : 0;
+  const successRate = total > 0 ? Math.round((interviewsAndOffers / total) * 100) : 0;
 
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-      gap: 16,
+      gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+      gap: 14,
       marginBottom: 24
     }}>
-      {/* Metric 1: Total Candidatures */}
+      {/* 1. Total Postulé */}
       <div className="glass-panel" style={{
-        padding: '18px 20px',
+        padding: '16px 18px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        position: 'relative',
-        overflow: 'hidden'
+        background: 'var(--bg-card)'
       }}>
         <div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Total Candidatures
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, marginTop: 4, color: 'var(--text-main)' }}>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4, color: 'var(--text-main)' }}>
             {total}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'hsl(210, 95%, 65%)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span>Toutes plateformes & LinkedIn</span>
+          <div style={{ fontSize: '0.74rem', color: 'hsl(210, 95%, 65%)', marginTop: 2 }}>
+            Recherche LinkedIn active
           </div>
         </div>
         <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: 14,
+          width: 44,
+          height: 44,
+          borderRadius: 12,
           background: 'hsla(210, 95%, 54%, 0.15)',
-          border: '1px solid hsla(210, 95%, 54%, 0.25)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          color: 'var(--accent-linkedin)'
         }}>
-          <Briefcase size={22} color="hsl(210, 95%, 54%)" />
+          <Briefcase size={20} />
         </div>
       </div>
 
-      {/* Metric 2: Taux de Réponse */}
+      {/* 2. Réponse : NON (En attente) */}
       <div className="glass-panel" style={{
-        padding: '18px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Taux de Conversion
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, marginTop: 4, color: 'hsl(154, 75%, 48%)' }}>
-            {responseRate}%
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
-            {interviews + offers} réponses positives
-          </div>
-        </div>
-        <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: 14,
-          background: 'hsla(154, 75%, 48%, 0.15)',
-          border: '1px solid hsla(154, 75%, 48%, 0.25)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <TrendingUp size={22} color="hsl(154, 75%, 48%)" />
-        </div>
-      </div>
-
-      {/* Metric 3: Entretiens Actifs */}
-      <div className="glass-panel" style={{
-        padding: '18px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Entretiens en Cours
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, marginTop: 4, color: 'hsl(270, 75%, 66%)' }}>
-            {interviews}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
-            RH, Tests & Étape Finale
-          </div>
-        </div>
-        <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: 14,
-          background: 'hsla(270, 75%, 66%, 0.15)',
-          border: '1px solid hsla(270, 75%, 66%, 0.25)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Calendar size={22} color="hsl(270, 75%, 66%)" />
-        </div>
-      </div>
-
-      {/* Metric 4: Offres Reçues */}
-      <div className="glass-panel" style={{
-        padding: '18px 20px',
+        padding: '16px 18px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: offers > 0 ? 'linear-gradient(135deg, hsla(154, 75%, 48%, 0.12), hsla(224, 40%, 13%, 0.8))' : 'var(--bg-glass)'
+        background: 'var(--bg-card)'
       }}>
         <div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Offres Reçues
+          <div style={{ fontSize: '0.75rem', color: 'hsl(38, 92%, 55%)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Réponse : NON (En attente)
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, marginTop: 4, color: 'hsl(154, 75%, 52%)' }}>
-            {offers}
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4, color: 'hsl(38, 92%, 52%)' }}>
+            {pendingResponses}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'hsl(154, 75%, 48%)', marginTop: 2, fontWeight: 500 }}>
-            {offers > 0 ? '🎉 Propositions prêtes à négocier' : 'En phase d\'entretiens'}
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginTop: 2 }}>
+            {total > 0 ? `${Math.round((pendingResponses / total) * 100)}% de vos candidatures` : 'Aucune'}
           </div>
         </div>
         <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: 14,
-          background: 'hsla(154, 75%, 48%, 0.2)',
-          border: '1px solid hsla(154, 75%, 48%, 0.35)',
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: 'hsla(38, 92%, 52%, 0.15)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          color: 'hsl(38, 92%, 52%)'
         }}>
-          <Trophy size={22} color="hsl(154, 75%, 48%)" />
+          <Clock size={20} />
         </div>
       </div>
 
-      {/* Metric 5: Relances Recommandées */}
+      {/* 3. Réponse : OUI (Retours reçus) */}
+      <div className="glass-panel" style={{
+        padding: '16px 18px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: 'var(--bg-card)'
+      }}>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'hsl(154, 75%, 48%)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Réponse : OUI ({responseRate}%)
+          </div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4, color: 'hsl(154, 75%, 48%)' }}>
+            {responsesReceived}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'hsl(154, 75%, 52%)', marginTop: 2, fontWeight: 500 }}>
+            {interviewsAndOffers} entretiens & offres
+          </div>
+        </div>
+        <div style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: 'hsla(154, 75%, 48%, 0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'hsl(154, 75%, 48%)'
+        }}>
+          <CheckCircle2 size={20} />
+        </div>
+      </div>
+
+      {/* 4. À relancer (> 7 jours) */}
       <div 
-        className="glass-panel" 
+        className="glass-panel"
         onClick={() => onFilterByFollowUp && onFilterByFollowUp()}
         style={{
-          padding: '18px 20px',
+          padding: '16px 18px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           cursor: needsFollowUp.length > 0 ? 'pointer' : 'default',
-          border: needsFollowUp.length > 0 ? '1px solid hsla(38, 92%, 52%, 0.35)' : '1px solid var(--border-subtle)',
-          background: needsFollowUp.length > 0 ? 'linear-gradient(135deg, hsla(38, 92%, 52%, 0.08), hsla(224, 40%, 13%, 0.8))' : 'var(--bg-glass)'
+          background: needsFollowUp.length > 0 ? 'hsla(38, 92%, 52%, 0.08)' : 'var(--bg-card)',
+          border: needsFollowUp.length > 0 ? '1.5px solid hsl(38, 92%, 52%)' : '1px solid var(--border-subtle)'
         }}
-        title={needsFollowUp.length > 0 ? 'Cliquez pour filtrer les candidatures à relancer' : ''}
+        title="Cliquez pour filtrer les candidatures sans réponse à relancer"
       >
         <div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            À Relancer
+          <div style={{ fontSize: '0.75rem', color: 'hsl(38, 92%, 55%)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Relances prioritaires
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, marginTop: 4, color: needsFollowUp.length > 0 ? 'hsl(38, 92%, 52%)' : 'var(--text-dim)' }}>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4, color: needsFollowUp.length > 0 ? 'hsl(38, 92%, 52%)' : 'var(--text-dim)' }}>
             {needsFollowUp.length}
           </div>
-          <div style={{ fontSize: '0.75rem', color: needsFollowUp.length > 0 ? 'hsl(38, 92%, 55%)' : 'var(--text-dim)', marginTop: 2 }}>
-            {needsFollowUp.length > 0 ? '⚠️ Sans réponse depuis +7 jours' : 'À jour sur vos relances'}
+          <div style={{ fontSize: '0.74rem', color: needsFollowUp.length > 0 ? 'hsl(38, 92%, 55%)' : 'var(--text-dim)', marginTop: 2 }}>
+            {needsFollowUp.length > 0 ? '⚠️ Sans réponse depuis +7j (Cliquez)' : 'Aucun retard'}
           </div>
         </div>
         <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: 14,
-          background: needsFollowUp.length > 0 ? 'hsla(38, 92%, 52%, 0.18)' : 'var(--bg-card)',
-          border: '1px solid hsla(38, 92%, 52%, 0.3)',
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: needsFollowUp.length > 0 ? 'hsla(38, 92%, 52%, 0.2)' : 'var(--bg-surface)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          color: needsFollowUp.length > 0 ? 'hsl(38, 92%, 52%)' : 'var(--text-dim)'
         }}>
-          <Clock size={22} color={needsFollowUp.length > 0 ? 'hsl(38, 92%, 52%)' : 'var(--text-dim)'} />
+          <AlertTriangle size={20} />
         </div>
       </div>
     </div>

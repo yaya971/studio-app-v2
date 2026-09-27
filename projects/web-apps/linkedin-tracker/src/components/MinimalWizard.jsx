@@ -18,6 +18,7 @@ import LinkedInIcon from './LinkedInIcon';
 export default function MinimalWizard({ 
   user, 
   onDemoLogin, 
+  onConnectProfile,
   onOpenRealAuth, 
   onCreateApplication, 
   onImportCsv,
@@ -30,6 +31,10 @@ export default function MinimalWizard({
   // 3: Step 3 - First Application or CSV Import
   // 4: Step 4 - Completion Screen
   const [step, setStep] = useState(0);
+
+  // Step 1 state: Direct profile name
+  const [profileNameInput, setProfileNameInput] = useState('');
+  const [profileHeadlineInput, setProfileHeadlineInput] = useState('');
 
   // Step 2 state: Target criteria
   const [targetTitle, setTargetTitle] = useState('Développeur Fullstack');
@@ -266,7 +271,72 @@ export default function MinimalWizard({
               <CheckCircle2 size={24} color="hsl(154, 75%, 48%)" />
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+              <div style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 14,
+                padding: '16px'
+              }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
+                  Votre Nom et Prénom *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Yaya Touré..."
+                  value={profileNameInput}
+                  onChange={e => setProfileNameInput(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-medium)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    marginBottom: 12
+                  }}
+                />
+
+                <button
+                  type="button"
+                  disabled={!profileNameInput.trim() || isProcessing}
+                  onClick={async () => {
+                    setIsProcessing(true);
+                    if (onConnectProfile) {
+                      await onConnectProfile(profileNameInput, profileHeadlineInput || 'En recherche active sur LinkedIn');
+                    } else {
+                      await onDemoLogin();
+                    }
+                    setIsProcessing(false);
+                    setStep(2);
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    padding: '12px',
+                    borderRadius: 8,
+                    background: profileNameInput.trim() ? 'hsl(210, 95%, 54%)' : 'var(--bg-card)',
+                    color: profileNameInput.trim() ? '#ffffff' : 'var(--text-dim)',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    boxShadow: profileNameInput.trim() ? '0 4px 12px hsla(210, 95%, 54%, 0.35)' : 'none',
+                    cursor: profileNameInput.trim() ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  <span>Connecter mon compte & Continuer</span>
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+
+              <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
+                — ou —
+              </div>
+
               <button
                 type="button"
                 onClick={handleConnectDemo}
@@ -275,39 +345,18 @@ export default function MinimalWizard({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 10,
-                  padding: '14px 20px',
-                  borderRadius: 12,
-                  background: 'hsl(210, 95%, 54%)',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  boxShadow: '0 4px 14px hsla(210, 95%, 54%, 0.35)'
-                }}
-              >
-                <Sparkles size={18} />
-                <span>{isProcessing ? 'Connexion en cours...' : 'Se connecter en 1 clic (Mode Démo Vérifié)'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={onOpenRealAuth}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
                   gap: 8,
-                  padding: '12px 20px',
-                  borderRadius: 12,
+                  padding: '11px 16px',
+                  borderRadius: 10,
                   background: 'var(--bg-surface)',
-                  color: 'var(--text-muted)',
+                  color: 'var(--text-main)',
                   border: '1px solid var(--border-medium)',
                   fontSize: '0.85rem',
                   fontWeight: 600
                 }}
               >
-                <LinkedInIcon size={16} />
-                <span>Configurer mes clés officielles LinkedIn OAuth</span>
+                <Sparkles size={16} color="hsl(38, 92%, 52%)" />
+                <span>Tester en 1 clic (Profil Démo)</span>
               </button>
             </div>
           )}

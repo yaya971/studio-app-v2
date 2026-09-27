@@ -120,6 +120,27 @@ app.post('/api/auth/demo-login', (req, res) => {
   res.json({ success: true, user: demoUser });
 });
 
+// Connect user's real LinkedIn profile directly
+app.post('/api/auth/connect-profile', (req, res) => {
+  const { name, headline, linkedinUrl, avatarUrl } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Le nom est requis' });
+  }
+
+  const user = {
+    id: `linkedin-user-${Date.now()}`,
+    name: name.trim(),
+    headline: headline ? headline.trim() : 'En recherche active sur LinkedIn',
+    linkedinUrl: linkedinUrl ? linkedinUrl.trim() : '',
+    avatarUrl: avatarUrl ? avatarUrl.trim() : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0a66c2&color=fff&size=200`,
+    provider: 'linkedin-profile',
+    connectedAt: new Date().toISOString()
+  };
+
+  req.session.user = user;
+  res.json({ success: true, user });
+});
+
 // Logout
 app.post('/api/auth/logout', (req, res) => {
   req.session = null;

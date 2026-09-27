@@ -105,6 +105,27 @@ export default function App() {
     }
   };
 
+  const handleConnectProfile = async (name, headline, linkedinUrl) => {
+    try {
+      const res = await fetch('/api/auth/connect-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, headline, linkedinUrl })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAuthStatus({
+          ...authStatus,
+          isAuthenticated: true,
+          user: data.user
+        });
+        showToast(`🎉 Profil LinkedIn de ${name} relié avec succès !`);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -328,6 +349,7 @@ export default function App() {
           <MinimalWizard
             user={authStatus?.user}
             onDemoLogin={handleDemoLogin}
+            onConnectProfile={handleConnectProfile}
             onOpenRealAuth={() => setIsAuthModalOpen(true)}
             onCreateApplication={handleCreateApplication}
             onImportCsv={handleImportCsvDirect}
