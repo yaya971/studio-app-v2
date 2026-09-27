@@ -8,6 +8,7 @@ import NewApplicationModal from './components/NewApplicationModal';
 import ImportCsvModal from './components/ImportCsvModal';
 import LinkedInAuthModal from './components/LinkedInAuthModal';
 import ApplicationDetailsModal from './components/ApplicationDetailsModal';
+import OnboardingBanner from './components/OnboardingBanner';
 import { getDaysSince } from './constants';
 import confetti from 'canvas-confetti';
 
@@ -277,6 +278,19 @@ export default function App() {
 
       {/* Main Content Area */}
       <main style={{ maxWidth: 1600, width: '100%', margin: '0 auto', padding: '24px 24px 48px', flex: 1 }}>
+        {/* Step-by-Step Onboarding Guide */}
+        <OnboardingBanner
+          user={authStatus?.user}
+          applicationsCount={applications.length}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          onOpenImportModal={() => setIsImportModalOpen(true)}
+          onOpenNewModal={() => {
+            setNewModalInitialStatus('applied');
+            setIsNewModalOpen(true);
+          }}
+          onDemoLogin={handleDemoLogin}
+        />
+
         {/* Key Metrics Summary Bar */}
         <MetricsBar 
           applications={applications} 

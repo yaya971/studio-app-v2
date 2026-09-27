@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { 
   X, 
   Sparkles, 
@@ -6,7 +7,7 @@ import {
   DollarSign, 
   Calendar, 
   User, 
-  FileText,
+  FileText, 
   Check
 } from 'lucide-react';
 import LinkedInIcon from './LinkedInIcon';
