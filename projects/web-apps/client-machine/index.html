@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Machine — Studio A | Prospection, Cartographie, Audit IA & Refonte Express</title>
+  
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+  <!-- Custom Design System -->
+  <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body>
+
+  <!-- Top Persistent Header -->
+  <header class="app-header">
+    <div class="brand-badge">
+      <div class="brand-logo-icon">⚡</div>
+      <div>
+        <div class="brand-title">
+          Client Machine <span class="version-pill">Studio A v2</span>
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-muted);">
+          Générateur autonome d'acquisitions & refontes locales
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-target="tab-map">
+        <span>🧭</span> Prospection & Carte
+      </button>
+      <button class="nav-tab" data-target="tab-audit">
+        <span>⚡</span> Audit 360° & IA
+      </button>
+      <button class="nav-tab" data-target="tab-redesign">
+        <span>🎨</span> Refonte Avant/Après
+      </button>
+      <button class="nav-tab" data-target="tab-proposals">
+        <span>💼</span> Propositions & DM
+      </button>
+      <button class="nav-tab" data-target="tab-crm">
+        <span>📊</span> Pipeline CRM
+      </button>
+      <button class="nav-tab" data-target="tab-settings">
+        <span>⚙️</span> Mon Offre & Clés
+      </button>
+    </nav>
+
+    <div class="header-actions">
+      <button id="btnQuickExport" class="btn-secondary btn-sm" onclick="document.querySelector('[data-target=\'tab-settings\']').click()">
+        🔒 Coffre-fort API
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-container">
+
+    <!-- Top Realtime KPI Strip -->
+    <div class="hero-stats-grid">
+      <div class="glass-card stat-card">
+        <div class="stat-icon purple">🎯</div>
+        <div>
+          <div class="stat-value" id="statTotalLeads">0</div>
+          <div class="stat-label">Prospects Qualifiés</div>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card">
+        <div class="stat-icon blue">✉</div>
+        <div>
+          <div class="stat-value" id="statEmailLeads" style="color: var(--status-blue);">0</div>
+          <div class="stat-label">🔵 Emails Dispo (Auto)</div>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card">
+        <div class="stat-icon amber">★</div>
+        <div>
+          <div class="stat-value" id="statDmLeads" style="color: var(--status-amber);">0</div>
+          <div class="stat-label">🟡 Contacts DM (Instagram/FB)</div>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card">
+        <div class="stat-icon emerald">💰</div>
+        <div>
+          <div class="stat-value" id="statPipelineVal" style="color: var(--status-emerald);">0 €</div>
+          <div class="stat-label">Valeur du Pipeline (€)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: PROSPECTION & CARTE INTERACTIVE -->
+    <div id="tab-map" class="tab-pane active">
+      <div class="prospector-layout">
+        <!-- Sidebar Controls & Leads List -->
+        <div class="search-box-card glass-card">
+          <form id="searchProspectsForm" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div class="input-group">
+              <label class="input-label" for="inputCity">
+                <span>Ville / Région</span>
+                <span style="color: var(--accent-cyan);">Gratuit (OSM) / Apify</span>
+              </label>
+              <input type="text" id="inputCity" class="input-field" placeholder="ex: Paris, Lyon, Bordeaux, Marseille..." value="Paris">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="selectCommerce">Type d'activité / Commerce</label>
+              <select id="selectCommerce" class="select-field">
+                <option value="restaurant">Restaurants & Brasseries</option>
+                <option value="coiffure">Salons de Coiffure & Barbiers</option>
+                <option value="artisan">Artisans & BTP (Plombier, Élec)</option>
+                <option value="avocat">Cabinets d'Avocats & Juridique</option>
+                <option value="sport">Salles de Sport & Fitness</option>
+                <option value="commerce">Tous commerces de proximité</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; margin-top: 0.25rem;">
+              ⚡ Lancer la Recherche de Prospects
+            </button>
+          </form>
+
+          <div id="searchStatus" style="display: none; font-size: 0.8rem; padding: 0.6rem; border-radius: var(--radius-sm); background: hsla(238, 86%, 66%, 0.15); border: 1px solid var(--accent-indigo); color: #fff;"></div>
+
+          <!-- Quick Channel Filters -->
+          <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.75rem;">
+            <div class="input-group" style="margin-bottom: 0.5rem;">
+              <input type="text" id="inputKeyword" class="input-field" placeholder="Filtrer par nom ou mot-clé..." style="padding: 0.5rem 0.75rem; font-size: 0.8rem;">
+            </div>
+
+            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+              <button class="btn-secondary btn-sm filter-btn active" data-filter="all">Tous</button>
+              <button class="btn-secondary btn-sm filter-btn" data-filter="email">🔵 Email Dispo</button>
+              <button class="btn-secondary btn-sm filter-btn" data-filter="dm">🟡 Contact DM</button>
+              <button class="btn-secondary btn-sm filter-btn" data-filter="critical">🔴 Critique / Sans Site</button>
+            </div>
+          </div>
+
+          <!-- Leads List Box -->
+          <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem;">
+            <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">
+              Prospects détectés (cliquez pour inspecter)
+            </div>
+            <div class="leads-list-container" id="leadsListContainer"></div>
+          </div>
+        </div>
+
+        <!-- Interactive Map Container -->
+        <div class="map-wrapper">
+          <div id="leafletMap"></div>
+
+          <!-- Color Code Map Legend -->
+          <div class="map-legend">
+            <div style="font-weight: 700; color: #fff; margin-bottom: 2px;">Code Couleur de Prospection :</div>
+            <div class="legend-item">
+              <span class="legend-dot dot-blue"></span>
+              <span><strong>Bleu :</strong> Email disponible (prospection automatique)</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot dot-amber"></span>
+              <span><strong>Jaune :</strong> Contact par DM (Instagram / Facebook)</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot dot-rose"></span>
+              <span><strong>Rose :</strong> Sans site web / Score critique (&lt;35)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: AUDIT 360° & QUALIFICATION IA -->
+    <div id="tab-audit" class="tab-pane">
+      <div id="auditContentContainer"></div>
+    </div>
+
+    <!-- TAB 3: REFONTE INTERACTIVE AVANT/APRÈS -->
+    <div id="tab-redesign" class="tab-pane">
+      <div id="redesignContainer"></div>
+    </div>
+
+    <!-- TAB 4: PROPOSITIONS & OUTREACH -->
+    <div id="tab-proposals" class="tab-pane">
+      <div id="proposalsContainer"></div>
+    </div>
+
+    <!-- TAB 5: PIPELINE CRM -->
+    <div id="tab-crm" class="tab-pane">
+      <div id="crmContainer"></div>
+    </div>
+
+    <!-- TAB 6: MON OFFRE & COFFRE-FORT API -->
+    <div id="tab-settings" class="tab-pane">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <!-- Agency Profile Card -->
+        <div class="glass-card">
+          <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: #fff;">👤 Mon Profil "Entreprise & Offre"</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+            Ces paramètres personnalisent automatiquement les angles de rédaction des propositions et l'audit.
+          </p>
+
+          <form id="formAgencyProfile" style="display: flex; flex-direction: column; gap: 0.85rem;">
+            <div class="input-group">
+              <label class="input-label" for="settingAgencyName">Nom de votre Studio / Agence</label>
+              <input type="text" id="settingAgencyName" class="input-field" value="Studio A Digital">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="settingFounder">Votre Prénom / Signature</label>
+              <input type="text" id="settingFounder" class="input-field" value="Alexandre M.">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="settingSpecialty">Spécialité & Positionnement</label>
+              <input type="text" id="settingSpecialty" class="input-field" value="Refonte haute performance & acquisition pour commerces">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="settingAvgPrice">Tarif Moyen Indicatif d'une Refonte</label>
+              <input type="text" id="settingAvgPrice" class="input-field" value="1 800 €">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="settingCalendly">Lien Calendly / Prise de Rendez-vous</label>
+              <input type="text" id="settingCalendly" class="input-field" value="https://calendly.com/studio-a-demo/refonte">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="settingBudgetLead">Budget alloué par prospect</label>
+              <input type="text" id="settingBudgetLead" class="input-field" value="2.00 €">
+            </div>
+
+            <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">
+              💾 Enregistrer Mon Profil
+            </button>
+          </form>
+        </div>
+
+        <!-- API Vault & Backup Card -->
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <div class="glass-card">
+            <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: #fff;">🔒 Coffre-fort de Clés API</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Vos clés sont stockées localement et chiffrées dans votre navigateur. Elles ne transitent sur aucun serveur tiers.
+            </p>
+
+            <form id="formApiVault" style="display: flex; flex-direction: column; gap: 0.85rem;">
+              <div class="input-group">
+                <label class="input-label" for="vaultGeminiKey">Clé Google Gemini / LLM (Optionnel)</label>
+                <input type="password" id="vaultGeminiKey" class="input-field" placeholder="AIzaSy...">
+              </div>
+
+              <div class="input-group">
+                <label class="input-label" for="vaultApifyKey">Clé Apify Scraper (Optionnel)</label>
+                <input type="password" id="vaultApifyKey" class="input-field" placeholder="apify_api_...">
+              </div>
+
+              <div class="input-group">
+                <label class="input-label" for="vaultVercelToken">Token Vercel Deploy (Optionnel)</label>
+                <input type="password" id="vaultVercelToken" class="input-field" placeholder="vercel_tok_...">
+              </div>
+
+              <div class="input-group">
+                <label class="input-label" for="vaultResendKey">Clé Resend / Email Provider (Optionnel)</label>
+                <input type="password" id="vaultResendKey" class="input-field" placeholder="re_123...">
+              </div>
+
+              <button type="submit" class="btn-secondary" style="margin-top: 0.5rem;">
+                🔒 Mettre à jour le Coffre-fort
+              </button>
+            </form>
+          </div>
+
+          <!-- Backup & Restore -->
+          <div class="glass-card">
+            <h3 style="font-size: 1.05rem; margin-bottom: 0.5rem; color: #fff;">📦 Sauvegarde & Restauration Totale</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Exportez ou restaurez l'intégralité de vos prospects, pipelines CRM, notes et réglages en 1 fichier JSON.
+            </p>
+            <div style="display: flex; gap: 0.75rem;">
+              <button id="btnExportBackup" class="btn-secondary btn-sm" style="flex: 1;">
+                📥 Exporter JSON
+              </button>
+              <label class="btn-secondary btn-sm" style="flex: 1; text-align: center; cursor: pointer;">
+                📤 Restaurer JSON
+                <input type="file" id="inputImportBackup" accept=".json" style="display: none;">
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Main ES Module Bootstrap -->
+  <script type="module" src="./src/js/app.js"></script>
+</body>
+</html>
