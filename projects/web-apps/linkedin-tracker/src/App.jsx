@@ -9,6 +9,9 @@ import ImportCsvModal from './components/ImportCsvModal';
 import LinkedInAuthModal from './components/LinkedInAuthModal';
 import ApplicationDetailsModal from './components/ApplicationDetailsModal';
 import OnboardingBanner from './components/OnboardingBanner';
+import MinimalWizard from './components/MinimalWizard';
+import LinkedInIcon from './components/LinkedInIcon';
+import { ArrowRight } from 'lucide-react';
 import { getDaysSince } from './constants';
 import confetti from 'canvas-confetti';
 
@@ -16,6 +19,11 @@ export default function App() {
   const [applications, setApplications] = useState([]);
   const [authStatus, setAuthStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Minimalist single-button wizard mode (defaults to true as requested)
+  const [isWizardMode, setIsWizardMode] = useState(() => {
+    return localStorage.getItem('careerpulse_completed') !== 'true';
+  });
 
   // Filters & Views
   const [searchQuery, setSearchQuery] = useState('');
@@ -233,6 +241,112 @@ export default function App() {
     return 0;
   });
 
+  const handleImportCsvDirect = async (csvText) => {
+    try {
+      const res = await fetch('/api/applications/import-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csvContent: csvText })
+      });
+      await fetchApplications();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleFinishWizard = () => {
+    localStorage.setItem('careerpulse_completed', 'true');
+    setIsWizardMode(false);
+    showToast('🎉 Configuration terminée ! Bienvenue sur votre tableau de bord.');
+  };
+
+  // --- RENDU 1 : MODE ULTRA MINIMALISTE ÉTAPE PAR ÉTAPE (COMMENCE AVEC UN SEUL BOUTON AU MILIEU) ---
+  if (isWizardMode) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {/* En-tête épuré */}
+        <header style={{
+          padding: '16px 28px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid var(--border-subtle)',
+          background: 'hsla(224, 45%, 8%, 0.85)',
+          backdropFilter: 'blur(16px)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              background: 'hsl(210, 95%, 54%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              boxShadow: '0 0 12px hsla(210, 95%, 54%, 0.4)'
+            }}>
+              <LinkedInIcon size={20} />
+            </div>
+            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-heading)' }}>
+              CareerPulse
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              localStorage.setItem('careerpulse_completed', 'true');
+              setIsWizardMode(false);
+            }}
+            style={{
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: 9999,
+              border: '1px solid var(--border-subtle)'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = 'var(--text-main)';
+              e.currentTarget.style.borderColor = 'var(--border-medium)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.borderColor = 'var(--border-subtle)';
+            }}
+          >
+            <span>Passer directement au tableau de bord</span>
+            <ArrowRight size={14} />
+          </button>
+        </header>
+
+        {/* L'Assistant guidé avec un seul bouton au milieu */}
+        <main style={{ flex: 1 }}>
+          <MinimalWizard
+            user={authStatus?.user}
+            onDemoLogin={handleDemoLogin}
+            onOpenRealAuth={() => setIsAuthModalOpen(true)}
+            onCreateApplication={handleCreateApplication}
+            onImportCsv={handleImportCsvDirect}
+            onCompleteWizard={handleFinishWizard}
+          />
+        </main>
+
+        <LinkedInAuthModal
+          isOpen={isAuthModalOpen}
+          authStatus={authStatus}
+          onClose={() => setIsAuthModalOpen(false)}
+          onDemoLogin={handleDemoLogin}
+          onRefreshAuth={fetchAuthStatus}
+        />
+      </div>
+    );
+  }
+
+  // --- RENDU 2 : TABLEAU DE BORD COMPLET DE GESTION ---
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Navbar */}
@@ -248,6 +362,7 @@ export default function App() {
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
         onDemoLogin={handleDemoLogin}
+        onOpenWizard={() => setIsWizardMode(true)}
       />
 
       {/* Toast alert */}

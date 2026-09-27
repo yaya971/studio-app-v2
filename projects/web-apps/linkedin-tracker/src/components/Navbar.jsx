@@ -21,7 +21,8 @@ export default function Navbar({
   onOpenAuthModal, 
   onLogout,
   onDemoLogin,
-  totalCount
+  totalCount,
+  onOpenWizard
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -110,6 +111,29 @@ export default function Navbar({
 
         {/* Right: Actions & LinkedIn Auth widget */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Re-open Wizard */}
+          {onOpenWizard && (
+            <button
+              onClick={onOpenWizard}
+              title="Relancer le guide ultra-minimaliste pas-à-pas"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-md)',
+                background: 'transparent',
+                color: 'hsl(210, 95%, 65%)',
+                border: '1px solid hsla(210, 95%, 54%, 0.3)',
+                fontSize: '0.82rem',
+                fontWeight: 600
+              }}
+            >
+              <Sparkles size={14} />
+              <span>Guide Pas-à-Pas</span>
+            </button>
+          )}
+
           {/* Import CSV Button */}
           <button 
             onClick={onOpenImportModal}
