@@ -6,9 +6,7 @@ Tous les projets créés dans cet espace sont répertoriés ci-dessous avec leur
 
 ## 🚀 Projets Actifs
 
-| Projet | Catégorie | Description | Liens d'accès direct | Serveur Local |
-| :--- | :--- | :--- | :--- | :--- |
-| **Client Machine** | Web Apps | Prospection locale (OpenStreetMap/Apify), carte interactive avec statuts couleur, audit 360°, refonte interactive Avant/Après, 3 angles de pitch et CRM Kanban | • [Dossier projet](file:///Users/mac0/Documents/studio-app-v2/projects/web-apps/client-machine)<br>• [Documentation](file:///Users/mac0/Documents/studio-app-v2/projects/web-apps/client-machine/README.md)<br>• [index.html](file:///Users/mac0/Documents/studio-app-v2/projects/web-apps/client-machine/index.html) | [Ouvrir l'application (Port 5173)](http://localhost:5173) |
+*Aucun projet actif pour le moment. Votre espace est prêt pour une nouvelle création.*
 
 ---
 
