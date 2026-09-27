@@ -1,32 +1,27 @@
 {
-  "name": "tmp-app",
-  "version": "0.1.0",
-  "private": true,
+  "name": "antigravity-studio-v2",
+  "version": "2.0.0",
+  "description": "Studio A V2 - Unified Antigravity Workspace with 47+ specialized agent skills and automated orchestration engine",
+  "main": "orchestrator.mjs",
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "workflow": "node orchestrator.mjs",
+    "orchestrate": "node orchestrator.mjs",
+    "status": "node orchestrator.mjs status",
+    "route": "node orchestrator.mjs route",
+    "precheck": "node orchestrator.mjs precheck",
+    "dashboard": "node orchestrator.mjs dashboard",
+    "catalog": "node orchestrator.mjs catalog"
   },
-  "dependencies": {
-    "@stripe/stripe-js": "^3.1.0",
-    "@supabase/auth-helpers-nextjs": "^0.15.0",
-    "@supabase/ssr": "^0.9.0",
-    "@supabase/supabase-js": "^2.98.0",
-    "lucide-react": "^0.577.0",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "stripe": "^14.20.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+  "keywords": [
+    "antigravity",
+    "agent-skills",
+    "understand-anything",
+    "ui-ux-pro-max",
+    "token-monitor",
+    "projectmem",
+    "orchestrator"
+  ],
+  "author": "Antigravity Studio",
+  "license": "MIT"
 }
