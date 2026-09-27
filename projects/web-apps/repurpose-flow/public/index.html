@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RepurposeFlow — Découpeur YouTube vers 10 Shorts TikTok Viraux</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="navbar">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">Repurpose<span class="gradient-text">Flow</span></span>
+        <span class="badge">Outil 06 Pro</span>
+      </div>
+      <div class="nav-actions">
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span>Moteur Anti-Shadowban Actif</span>
+        </div>
+        <button id="btnToggleHelp" class="btn btn-secondary">Guide Anti-Blocage</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+      <!-- Input Section -->
+      <section class="hero-section">
+        <h1>Transformez 1 vidéo YouTube en <span class="gradient-text">10 TikToks Viraux</span></h1>
+        <p class="subtitle">Détection IA des hooks, sous-titres animés karaoké, hashtags optimisés et filtres anti-blocage algorithmiques (anti-pHash & audio micro-pitch).</p>
+        
+        <div class="input-card">
+          <div class="url-input-group">
+            <span class="input-icon">🔗</span>
+            <input type="text" id="youtubeUrl" placeholder="Collez l'URL d'une vidéo YouTube (ex: https://www.youtube.com/watch?v=...)" value="https://www.youtube.com/watch?v=dQw4w9WgXcQ">
+            <button id="btnProcess" class="btn btn-primary">
+              <span class="btn-text">Générer les 10 Clips</span>
+              <span class="spinner" hidden></span>
+            </button>
+          </div>
+
+          <!-- Anti-Block Settings Toggles -->
+          <div class="antiblock-bar">
+            <span class="antiblock-label">🛡️ Filtres Anti-Blocage Algorithmique :</span>
+            <label class="toggle-pill">
+              <input type="checkbox" id="chkAudioPitch" checked>
+              <span>Audio Pitch +0.15st (Anti-Shazam)</span>
+            </label>
+            <label class="toggle-pill">
+              <input type="checkbox" id="chkDynamicZoom" checked>
+              <span>Micro-Zoom Dynamique (Anti-pHash)</span>
+            </label>
+            <label class="toggle-pill">
+              <input type="checkbox" id="chkMicroGrain" checked>
+              <span>Grain Cinématique 1.5%</span>
+            </label>
+            <label class="toggle-pill">
+              <input type="checkbox" id="chkSafeBorders" checked>
+              <span>Format 9:16 Flou Arrière-Plan</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Results Workspace (Hidden initially, revealed upon processing) -->
+      <section id="resultsSection" class="results-section">
+        <div class="results-grid">
+          <!-- Left Column: Video Phone Mockup & Preview -->
+          <div class="preview-panel">
+            <div class="phone-mockup-wrapper">
+              <div class="phone-mockup">
+                <div class="phone-notch"></div>
+                <div class="phone-screen" id="phoneScreen">
+                  <div class="video-overlay-anti-block" id="videoFilterOverlay"></div>
+                  <!-- Simulated 9:16 Background -->
+                  <div class="video-blurred-bg" id="videoBlurBg"></div>
+                  <!-- Simulated Video Foreground -->
+                  <div class="video-main-frame" id="videoMainFrame">
+                    <img id="previewThumb" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80" alt="Video Preview">
+                  </div>
+                  <!-- Karaoke Subtitle Box -->
+                  <div class="karaoke-subtitle-box">
+                    <span class="karaoke-word active">ATTENDS</span>
+                    <span class="karaoke-word active">LA</span>
+                    <span class="karaoke-word highlight">FIN...</span>
+                    <div class="karaoke-sub" id="karaokeSubText">Le moment exact où tout a basculé</div>
+                  </div>
+                  <!-- TikTok UI Overlay Mockup -->
+                  <div class="tiktok-ui-overlay">
+                    <div class="tiktok-right-actions">
+                      <div class="tiktok-action">❤️ <span>284K</span></div>
+                      <div class="tiktok-action">💬 <span>3.2K</span></div>
+                      <div class="tiktok-action">🔖 <span>45K</span></div>
+                      <div class="tiktok-action">↗️ <span>12K</span></div>
+                    </div>
+                    <div class="tiktok-bottom-caption">
+                      <div class="tiktok-username">@votre_studio_officiel</div>
+                      <div class="tiktok-caption-text" id="liveTiktokCaption">😱 Attends la fin, personne n'avait vu ça venir... #fyp #viral #pourtoi</div>
+                      <div class="tiktok-sound">🎵 Son original - Pitch Micro-Tuné (+0.15st)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- FFmpeg Command Inspector -->
+            <div class="ffmpeg-box">
+              <div class="ffmpeg-header">
+                <span>⚡ Commande d'export FFmpeg Haute Fidélité :</span>
+                <button id="btnCopyFFmpeg" class="btn btn-xs">Copier</button>
+              </div>
+              <code id="ffmpegCommand">ffmpeg -ss 00:45 -t 45 -i input.mp4 -filter_complex "[0:v]boxblur=20:20[bg];[0:v]scale=-1:1080[fg];[bg][fg]overlay,eq=saturation=1.04" -af "atempo=1.009" output.mp4</code>
+            </div>
+          </div>
+
+          <!-- Right Column: 10 Generated Clips Matrix -->
+          <div class="clips-panel">
+            <div class="clips-header">
+              <div>
+                <h2>Les 10 Extraits Détectés</h2>
+                <p id="videoMetaSummary">Vidéo analysée : 10 minutes | Prêts à l'export immédiat</p>
+              </div>
+              <button id="btnDownloadAll" class="btn btn-accent">Tout Exporter (.ZIP)</button>
+            </div>
+
+            <div class="clips-list" id="clipsList">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" hidden></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

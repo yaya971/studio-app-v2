@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StemStudio — Neural Stem Separator, Vocal Isolator & DJ Mashup Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Navbar -->
+    <header class="navbar">
+      <div class="logo">
+        <span class="logo-icon">🎛️</span>
+        <span class="logo-text">Stem<span class="gradient-text">Studio</span></span>
+        <span class="badge">Outils 11 • 12 • 19</span>
+      </div>
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="tab-stems">🎚️ 11. StemForge DAW</button>
+        <button class="tab-btn" data-tab="tab-vocal">🎤 12. Vocal & Acapella</button>
+        <button class="tab-btn" data-tab="tab-mashup">🎧 19. Mashup DJ Remix</button>
+      </div>
+      <div class="nav-status">
+        <span class="status-chip">⚡ HTDemucs M4 GPU Ready</span>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-container">
+      
+      <!-- TAB 1: StemForge (Outil 11) -->
+      <section id="tab-stems" class="tab-content active">
+        <div class="section-hero">
+          <h1>Séparez n'importe quel MP3 ou WAV en <span class="gradient-text">4 Pistes Indépendantes</span></h1>
+          <p class="subtitle">Isolation neuronale en local : Voix, Batterie, Basse et Synthés/Mélodies. Console de mixage multipiste en direct.</p>
+        </div>
+
+        <div class="audio-loader-card">
+          <div class="drop-zone" id="audioDropZone">
+            <span class="drop-icon">🎵</span>
+            <div>
+              <h3>Glissez-déposez votre musique (MP3, WAV, FLAC)</h3>
+              <p>ou <button id="btnLoadDemoTrack" class="link-btn">charger le morceau de démonstration (Synthwave 124 BPM)</button></p>
+            </div>
+            <input type="file" id="audioFileInput" accept="audio/*" hidden>
+            <button id="btnBrowseAudio" class="btn btn-primary">Parcourir les fichiers</button>
+          </div>
+        </div>
+
+        <!-- Master Transport & Spectrum -->
+        <div class="master-transport-card">
+          <div class="transport-controls">
+            <button id="btnMasterPlay" class="btn btn-play">▶ Lancer l'écoute</button>
+            <div class="track-meta">
+              <span id="stemTrackTitle" class="track-title">Midnight_Drive_Synthwave.wav</span>
+              <span class="track-badges">
+                <span class="pill">BPM : 124</span>
+                <span class="pill">Tonalité : 8A (A min)</span>
+                <span class="pill">Stéréo 44.1kHz</span>
+              </span>
+            </div>
+          </div>
+          <canvas id="masterSpectrumCanvas" class="spectrum-canvas" width="600" height="70"></canvas>
+        </div>
+
+        <!-- 4-Track Mixing Console -->
+        <div class="mixing-console">
+          <!-- Track: Vocals -->
+          <div class="fader-channel" data-stem="vocals">
+            <div class="channel-header">
+              <span class="channel-icon">🎤</span>
+              <span class="channel-title">Voix / Vocals</span>
+            </div>
+            <div class="meter-bar"><div class="meter-fill" style="height: 75%;"></div></div>
+            <div class="slider-wrapper">
+              <input type="range" class="vertical-fader" id="faderVocals" min="0" max="1.5" step="0.05" value="1.0">
+            </div>
+            <div class="channel-actions">
+              <button class="btn-mute" id="muteVocals">MUTE</button>
+              <button class="btn-solo" id="soloVocals">SOLO</button>
+            </div>
+            <span class="db-readout" id="dbVocals">0.0 dB</span>
+          </div>
+
+          <!-- Track: Drums -->
+          <div class="fader-channel" data-stem="drums">
+            <div class="channel-header">
+              <span class="channel-icon">🥁</span>
+              <span class="channel-title">Batterie / Drums</span>
+            </div>
+            <div class="meter-bar"><div class="meter-fill" style="height: 85%;"></div></div>
+            <div class="slider-wrapper">
+              <input type="range" class="vertical-fader" id="faderDrums" min="0" max="1.5" step="0.05" value="1.0">
+            </div>
+            <div class="channel-actions">
+              <button class="btn-mute" id="muteDrums">MUTE</button>
+              <button class="btn-solo" id="soloDrums">SOLO</button>
+            </div>
+            <span class="db-readout" id="dbDrums">0.0 dB</span>
+          </div>
+
+          <!-- Track: Bass -->
+          <div class="fader-channel" data-stem="bass">
+            <div class="channel-header">
+              <span class="channel-icon">🎸</span>
+              <span class="channel-title">Basse / Bass</span>
+            </div>
+            <div class="meter-bar"><div class="meter-fill" style="height: 70%;"></div></div>
+            <div class="slider-wrapper">
+              <input type="range" class="vertical-fader" id="faderBass" min="0" max="1.5" step="0.05" value="1.0">
+            </div>
+            <div class="channel-actions">
+              <button class="btn-mute" id="muteBass">MUTE</button>
+              <button class="btn-solo" id="soloBass">SOLO</button>
+            </div>
+            <span class="db-readout" id="dbBass">0.0 dB</span>
+          </div>
+
+          <!-- Track: Other/Melody -->
+          <div class="fader-channel" data-stem="other">
+            <div class="channel-header">
+              <span class="channel-icon">🎹</span>
+              <span class="channel-title">Mélodie / Synth</span>
+            </div>
+            <div class="meter-bar"><div class="meter-fill" style="height: 80%;"></div></div>
+            <div class="slider-wrapper">
+              <input type="range" class="vertical-fader" id="faderOther" min="0" max="1.5" step="0.05" value="1.0">
+            </div>
+            <div class="channel-actions">
+              <button class="btn-mute" id="muteOther">MUTE</button>
+              <button class="btn-solo" id="soloOther">SOLO</button>
+            </div>
+            <span class="db-readout" id="dbOther">0.0 dB</span>
+          </div>
+        </div>
+
+        <div class="export-bar">
+          <span>Format d'export : WAV Stéréo 24-bit Non Compressé</span>
+          <button id="btnExportStems" class="btn btn-accent">Télécharger les 4 Pistes (.ZIP)</button>
+        </div>
+      </section>
+
+      <!-- TAB 2: Vocal & Acapella Isolator (Outil 12) -->
+      <section id="tab-vocal" class="tab-content">
+        <div class="section-hero">
+          <h1>Isolateur <span class="gradient-text">Acapella & Karaoké</span></h1>
+          <p class="subtitle">Isolez la voix pure ou créez une version instrumentale instantanée débarrassée de toute voix.</p>
+        </div>
+
+        <div class="vocal-grid">
+          <!-- Acapella Card -->
+          <div class="isolator-card">
+            <div class="isolator-badge">1-CLIC ISOLATE</div>
+            <h2>🎤 Voix Pure (Acapella)</h2>
+            <p>Isole la voix principale et les choeurs en éliminant 100% de la batterie, de la basse et des instruments.</p>
+            <div class="filter-controls">
+              <label>Reverb Spatiale : <input type="range" id="vocalReverb" min="0" max="100" value="20"></label>
+              <label>Pitch Vocal : <input type="range" id="vocalPitch" min="-6" max="6" value="0"> <span id="pitchVal">0 st</span></label>
+            </div>
+            <button class="btn btn-primary" id="btnPreviewAcapella">Écouter l'Acapella</button>
+            <button class="btn btn-secondary" id="btnExportAcapella">Exporter Acapella (WAV)</button>
+          </div>
+
+          <!-- Instrumental Card -->
+          <div class="isolator-card">
+            <div class="isolator-badge instrumental">KARAOKÉ PRO</div>
+            <h2>🎹 Instrumental Pur (Sans Voix)</h2>
+            <p>Supprime la piste vocale pour créer une version karaoké studio ou un fond sonore pour vos vidéos.</p>
+            <div class="filter-controls">
+              <label>Basse Boost : <input type="range" id="instruBassBoost" min="0" max="10" value="3"></label>
+              <label>Clarté Aiguë : <input type="range" id="instruHighBoost" min="0" max="10" value="2"></label>
+            </div>
+            <button class="btn btn-primary" id="btnPreviewInstru">Écouter l'Instrumental</button>
+            <button class="btn btn-secondary" id="btnExportInstru">Exporter Instrumental (WAV)</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: StemMashup DJ Lab (Outil 19) -->
+      <section id="tab-mashup" class="tab-content">
+        <div class="section-hero">
+          <h1>Mashup DJ Lab : <span class="gradient-text">Remixez 2 Sons Ensemble</span></h1>
+          <p class="subtitle">Croisez la voix du morceau A avec la batterie et la basse du morceau B. Synchronisation automatique du BPM et de la tonalité.</p>
+        </div>
+
+        <div class="dj-decks-container">
+          <!-- Deck A -->
+          <div class="dj-deck" id="deckA">
+            <div class="deck-header">
+              <span class="deck-tag tag-a">DECK A</span>
+              <h3>Piste A (Source Vocale)</h3>
+            </div>
+            <div class="deck-track-info">
+              <strong id="deckAName">Pop_Vocal_Anthem.mp3</strong>
+              <span>120 BPM • F Minor</span>
+            </div>
+            <div class="deck-stem-toggles">
+              <label class="toggle-pill"><input type="checkbox" id="chkDeckAVocal" checked> <span>Voix</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="chkDeckABeat"> <span>Beat/Instru</span></label>
+            </div>
+          </div>
+
+          <!-- Center Mixer / Crossfader -->
+          <div class="dj-mixer-center">
+            <div class="sync-badge">🔥 Beat-Matching Auto : 124 BPM</div>
+            <div class="crossfader-box">
+              <div class="crossfader-labels">
+                <span>Piste A (100%)</span>
+                <span>Mix (50/50)</span>
+                <span>Piste B (100%)</span>
+              </div>
+              <input type="range" id="crossfaderSlider" min="0" max="100" value="50">
+            </div>
+            <div class="dj-buttons-row">
+              <button id="btnPlayMashup" class="btn btn-play">▶ Lancer le Mashup</button>
+              <button id="btnAutoSyncBpm" class="btn btn-secondary">⚡ Auto-Sync BPM</button>
+            </div>
+          </div>
+
+          <!-- Deck B -->
+          <div class="dj-deck" id="deckB">
+            <div class="deck-header">
+              <span class="deck-tag tag-b">DECK B</span>
+              <h3>Piste B (Source Rythmique)</h3>
+            </div>
+            <div class="deck-track-info">
+              <strong id="deckBName">Deep_House_Groove.mp3</strong>
+              <span>128 BPM • G Minor</span>
+            </div>
+            <div class="deck-stem-toggles">
+              <label class="toggle-pill"><input type="checkbox" id="chkDeckBVocal"> <span>Voix</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="chkDeckBBeat" checked> <span>Batterie + Basse</span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mashup-summary-card">
+          <div class="summary-details">
+            <h3>Configuration du Remix :</h3>
+            <p>Voix de <strong>Deck A</strong> + Beat punchy de <strong>Deck B</strong> harmonisés à 124 BPM.</p>
+          </div>
+          <button id="btnExportMashup" class="btn btn-accent">Enregistrer & Exporter le Mashup</button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Global Toast -->
+    <div id="toast" class="toast" hidden></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

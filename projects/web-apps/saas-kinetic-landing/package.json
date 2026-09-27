@@ -1,0 +1,16 @@
+{
+  "name": "saas-kinetic-landing",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "High-Converting Kinetic Bento Landing Page to Sell AI Creator Tools (Outil 33)",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test test/*.test.js",
+    "changelog": "node ../../scripts/repo2video-changelog/generate-changelog-video.mjs ."
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "cors": "^2.8.5"
+  }
+}

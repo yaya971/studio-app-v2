@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ECC Mission Control & Kev Micro-Router — Studio App v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="cockpit-layout">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="logo">
+        <span class="logo-icon">🛸</span>
+        <span class="logo-text">ECC <span class="gradient-text">Mission Control</span></span>
+        <span class="badge">Outils 41 + 42</span>
+      </div>
+      <div class="topbar-metrics">
+        <div class="metric-pill">
+          <span class="pulse-dot"></span>
+          <span>4 Serveurs Locaux Actifs</span>
+        </div>
+        <div class="metric-pill">
+          <span>⚡ Kev Micro-Router : <1.5ms</span>
+        </div>
+        <div class="metric-pill">
+          <span>🛡️ TDD Zéro-Bug : 100% Vert</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="btnRunTdd" class="btn btn-secondary btn-sm">🧪 Lancer TDD (43)</button>
+        <button id="btnRunChangelog" class="btn btn-secondary btn-sm">🎬 Changelog Vidéo (44)</button>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+      
+      <!-- Kev Micro-Router Prompt & Scaffolder -->
+      <section class="router-section">
+        <div class="router-card">
+          <div class="card-badge">⚡ KEV DECISION ROUTER (< 2ms)</div>
+          <h2>Quel projet souhaitez-vous créer dans ce workspace ?</h2>
+          <p>Tapez votre idée en français, le micro-routeur Kev déduit la catégorie, les compétences à enchaîner et prépare le projet en 1 clic.</p>
+          
+          <div class="prompt-input-group">
+            <input type="text" id="kevPromptInput" placeholder="Ex: 'Je veux un téléchargeur et découpeur TikTok', 'Un synthé modulaire WebGL'..." value="Un outil pour remixer et mixer deux musiques automatiquement">
+            <button id="btnClassify" class="btn btn-primary">Classifier & Router</button>
+          </div>
+
+          <!-- Dynamic Routing Result Card -->
+          <div id="routingResultCard" class="routing-result-card">
+            <div class="routing-meta-row">
+              <span class="routing-cat" id="resCategory">Neural Audio & Musique</span>
+              <span class="routing-latency" id="resLatency">⚡ 1.2 ms</span>
+              <span class="routing-confidence">Confiance : 98%</span>
+            </div>
+            <div class="routing-grid">
+              <div>
+                <label>Stack Technique Suggérée :</label>
+                <div class="code-pill" id="resStack">Web Audio API + HTDemucs Neural Stems + Canvas FFT Spectrum</div>
+              </div>
+              <div>
+                <label>Chaîne de Compétences Recommandée :</label>
+                <div class="skills-tags" id="resSkills">
+                  <span class="skill-tag">stemkit</span>
+                  <span class="skill-tag">motion-web</span>
+                  <span class="skill-tag">ui-ux-pro-max</span>
+                </div>
+              </div>
+            </div>
+            <div class="routing-actions">
+              <button id="btnScaffoldProject" class="btn btn-accent btn-sm">🚀 Scaffolder & Lancer le Projet</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Active Projects Grid -->
+      <section class="projects-section">
+        <div class="section-title-row">
+          <h2>Projets Actifs du Workspace</h2>
+          <span class="count-badge" id="projectsCount">4 Applications en ligne</span>
+        </div>
+
+        <div class="projects-grid" id="projectsGrid">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+      <!-- Console Logs Terminal Modal -->
+      <section id="terminalOutputSection" class="terminal-section" hidden>
+        <div class="terminal-card">
+          <div class="terminal-header">
+            <span id="terminalTitle">Sortie Console TDD / Changelog</span>
+            <button id="btnCloseTerminal" class="btn btn-xs">Fermer</button>
+          </div>
+          <pre id="terminalCodeOutput" class="terminal-pre"></pre>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Global Toast -->
+    <div id="toast" class="toast" hidden></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

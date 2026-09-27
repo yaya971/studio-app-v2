@@ -1,0 +1,17 @@
+{
+  "name": "repurpose-flow",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "YouTube to 10 Viral TikTok Clips with Anti-Detection Filters & Hashtags",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test test/*.test.js",
+    "changelog": "node ../../scripts/repo2video-changelog/generate-changelog-video.mjs ."
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "multer": "^1.4.5-lts.1"
+  }
+}
