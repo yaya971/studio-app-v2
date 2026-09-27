@@ -1,4 +1,4 @@
-# Studio A V2 — Standards d'Excellence Technique
+# Agent Yaya — Standards d'Excellence Technique
 
 ## 1. STACK TECHNIQUE PAR DÉFAUT
 

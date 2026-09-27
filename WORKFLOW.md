@@ -1,7 +1,7 @@
-# 🛸 Guide d'Orchestration Automatique — Studio A V2
+# 🛸 Guide d'Orchestration Automatique — Agent Yaya
 
 Ce document détaille le fonctionnement du système automatique d'orchestration
-intelligente du workspace **Studio A V2**.
+intelligente du workspace **Agent Yaya**.
 
 ---
 

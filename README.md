@@ -1,4 +1,4 @@
-# 🛸 Studio A V2
+# 🛸 Agent Yaya
 
 Espace de travail Antigravity — création de projets en mode autonome.
 

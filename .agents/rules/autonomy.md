@@ -1,4 +1,4 @@
-# Studio A V2 — Règles d'Autonomie Totale
+# Agent Yaya — Règles d'Autonomie Totale
 
 ## 🔴 DIRECTIVE PRINCIPALE : MODE AUTOMATIQUE MAXIMAL
 

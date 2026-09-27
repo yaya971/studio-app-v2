@@ -1,4 +1,4 @@
-# 📁 Catalogue des Projets — Studio A V2
+# 📁 Catalogue des Projets — Agent Yaya
 
 Tous les projets créés dans cet espace sont répertoriés ci-dessous avec leurs liens directs d'accès et de lancement.
 

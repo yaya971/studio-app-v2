@@ -1,7 +1,7 @@
 {
-  "name": "antigravity-studio-v2",
+  "name": "agent-yaya",
   "version": "2.0.0",
-  "description": "Studio A V2 - Unified Antigravity Autonomous Workspace with 47 specialized agent skills and intelligent orchestration engine",
+  "description": "Agent Yaya - Unified Antigravity Autonomous Workspace with 47 specialized agent skills and intelligent orchestration engine",
   "type": "module",
   "main": "orchestrator.mjs",
   "bin": {

@@ -1,10 +1,10 @@
-# AGENTS.md — Studio A V2 · Antigravity Autonomous Workspace
+# AGENTS.md — Agent Yaya · Antigravity Autonomous Workspace
 
 This workspace operates in **full autonomous mode**. All tasks execute end-to-end without confirmation prompts.
 
 ## Workspace Identity
 
-- **Name**: Studio A V2
+- **Name**: Agent Yaya
 - **GitHub**: `https://github.com/yaya971/studio-app-v2` (auto-push enabled)
 - **Mode**: AUTONOMOUS — zero friction, zero confirmation
 

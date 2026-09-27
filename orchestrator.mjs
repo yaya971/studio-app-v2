@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Antigravity Studio A V2 - Intelligent Workflow Orchestrator
+ * Agent Yaya - Intelligent Workflow Orchestrator
  * Automatically routes user requests to the optimal skill chain and coordinates
  * code intelligence, UI/UX, testing, token telemetry, and persistent memory.
  */
@@ -208,7 +208,7 @@ function printStatus() {
   const tools = getInstalledTools();
 
   console.log('\n🛸 ========================================================');
-  console.log('    ANTIGRAVITY STUDIO A V2 - WORKFLOW ORCHESTRATOR');
+  console.log('    AGENT YAYA - WORKFLOW ORCHESTRATOR');
   console.log('========================================================\n');
   console.log(`📦 Skills actives installées : ${skills.length} skills`);
   console.log(`🛠️ Outils & moteurs dans tools/ : ${tools.length} packages`);
@@ -279,7 +279,7 @@ function runPrecheck() {
 }
 
 function runHealthCheck() {
-  console.log('\n🩺 DIAGNOSTIC SANTÉ & INTÉGRITÉ - STUDIO A V2\n');
+  console.log('\n🩺 DIAGNOSTIC SANTÉ & INTÉGRITÉ - AGENT YAYA\n');
 
   // Check Node
   console.log(`✓ Node.js : ${process.version}`);
