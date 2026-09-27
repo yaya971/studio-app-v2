@@ -6,11 +6,7 @@ Tous les projets créés dans cet espace sont répertoriés ci-dessous avec leur
 
 ## 🚀 Projets Actifs
 
-### 💼 [CareerPulse — LinkedIn Job Tracker](file:///Users/mac0/Documents/studio-app-v2/projects/web-apps/linkedin-tracker)
-- **Description** : Application de suivi des candidatures d'emploi LinkedIn avec authentification OAuth 2.0 (OpenID Connect), pipeline Kanban interactif, import officiel des exports LinkedIn CSV, extraction de liens d'offres et générateur de relances recruteurs.
-- **Accès Web Local** : [http://localhost:5173](http://localhost:5173) (API: [http://localhost:3001](http://localhost:3001))
-- **Dossier source** : [`projects/web-apps/linkedin-tracker/`](file:///Users/mac0/Documents/studio-app-v2/projects/web-apps/linkedin-tracker)
-- **Lancement** : `npm run dev` (lance simultanément le serveur Express et l'interface Vite React)
+*Aucun projet actif pour le moment. Votre espace est prêt pour une nouvelle création.*
 
 ---
 
