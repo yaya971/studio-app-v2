@@ -17,11 +17,12 @@ Ce workspace est l'espace de travail souverain d'Antigravity.
 
 ## 2. OPÉRATIONS GIT AUTOMATIQUES
 
-Après chaque mission complète :
-
-1. `git add -A`
-2. `git commit -m "feat(auto): [description concise]"`
-3. `git push origin main`
+1. Démarrer le serveur dev et ouvrir l'application dans le navigateur (`open http://localhost:...`).
+2. Mettre à jour `projects/README.md` et le README de la sous-catégorie avec des liens cliquables (`file://...`).
+3. `git add -A`
+4. `git commit -m "feat(auto): [description concise]"`
+5. `git push origin main`
+6. Rapporter avec des liens directs cliquables vers les dossiers et fichiers créés.
 
 ## 3. INSTALLATION & OUTILS
 

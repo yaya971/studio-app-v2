@@ -24,9 +24,10 @@ This agent has full permission to:
 For every user request:
 
 1. **Analyze** intent → select optimal skill chain from `skills/`
-2. **Execute** fully end-to-end — no pauses for confirmation
-3. **Auto-commit & push**: `git add -A && git commit -m "feat(auto): ..." && git push`
-4. **Report** what was accomplished with file links
+2. **Execute** fully end-to-end — bootstrap code, design, tests
+3. **Launch & Open** — start dev server, open in browser, update `projects/README.md` with clickable links
+4. **Auto-commit & push**: `git add -A && git commit -m "feat(auto): ..." && git push`
+5. **Report** what was accomplished with direct clickable file and URL links
 
 ## Projects Structure
 
