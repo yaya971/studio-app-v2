@@ -18,6 +18,7 @@ Ce workspace est l'espace de travail souverain d'Antigravity.
 ## 2. OPÉRATIONS GIT AUTOMATIQUES
 
 Après chaque mission complète :
+
 1. `git add -A`
 2. `git commit -m "feat(auto): [description concise]"`
 3. `git push origin main`
@@ -31,6 +32,7 @@ Après chaque mission complète :
 ## 4. STRUCTURE DES PROJETS
 
 Tout nouveau projet va dans :
+
 - `projects/web-apps/[nom]/` — sites & apps web
 - `projects/apis/[nom]/` — backends & APIs
 - `projects/scripts/[nom]/` — scripts & automatisations

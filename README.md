@@ -5,6 +5,7 @@ Espace de travail Antigravity — création de projets en mode autonome.
 ## Démarrage rapide
 
 Dis simplement ce que tu veux créer dans le chat Antigravity, par exemple :
+
 - *"Crée une landing page pour mon SaaS"*
 - *"Fais-moi un script Python pour analyser des fichiers CSV"*
 - *"Construis un backend API REST avec auth"*
@@ -15,7 +16,7 @@ L'agent s'occupe de tout : code, design, tests, push GitHub.
 
 ## Structure du Workspace
 
-```
+```text
 studio-app-v2/
 │
 ├── 📁 projects/               ← Tous les projets créés ici

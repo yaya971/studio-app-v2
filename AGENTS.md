@@ -22,6 +22,7 @@ This agent has full permission to:
 ## Autonomous Workflow (Always Apply)
 
 For every user request:
+
 1. **Analyze** intent → select optimal skill chain from `skills/`
 2. **Execute** fully end-to-end — no pauses for confirmation
 3. **Auto-commit & push**: `git add -A && git commit -m "feat(auto): ..." && git push`
@@ -30,6 +31,7 @@ For every user request:
 ## Projects Structure
 
 All new projects go in the appropriate subfolder:
+
 - Web apps & sites → `projects/web-apps/[name]/`
 - Backend APIs → `projects/apis/[name]/`
 - Scripts & automation → `projects/scripts/[name]/`
@@ -40,7 +42,7 @@ All new projects go in the appropriate subfolder:
 ## Skills Dispatch (Priority Order)
 
 | Trigger | Skills Chain |
-|:--------|:------------|
+| :-------- | :----------- |
 | UI/UX, design, interface | `ui-ux-pro-max` → `design-system` → `ui-styling` → `frontend-ui-engineering` |
 | Understand code, architecture | `understand` → `understand-domain` → `projectmem` |
 | New feature, bug fix | `projectmem` → `spec-driven-development` → `test-driven-development` → `incremental-implementation` |
