@@ -5,8 +5,6 @@ This workspace operates in **full autonomous mode**. All tasks execute end-to-en
 ## Workspace Identity
 
 - **Name**: Studio A V2
-- **Owner**: mac0
-- **Path**: `/Users/mac0/Documents/studio-app-v2/`
 - **GitHub**: `https://github.com/yaya971/studio-app-v2` (auto-push enabled)
 - **Mode**: AUTONOMOUS — zero friction, zero confirmation
 
@@ -31,11 +29,13 @@ For every user request:
 
 ## Projects Structure
 
-All new projects: `projects/[project-name]/`
-
-## Google Account Integration
-
-For Google account features (Drive, Sheets, Gmail, Calendar), use the Google Cloud SDK tools available in the workspace. OAuth tokens are stored in `~/.config/gcloud/` and are pre-authorized.
+All new projects go in the appropriate subfolder:
+- Web apps & sites → `projects/web-apps/[name]/`
+- Backend APIs → `projects/apis/[name]/`
+- Scripts & automation → `projects/scripts/[name]/`
+- Python programs → `projects/python/[name]/`
+- Mobile apps → `projects/mobile/[name]/`
+- Quick experiments → `projects/experiments/[name]/`
 
 ## Skills Dispatch (Priority Order)
 
