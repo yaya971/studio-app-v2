@@ -1,13 +1,17 @@
 {
   "name": "antigravity-studio-v2",
   "version": "2.0.0",
-  "description": "Studio A V2 - Unified Antigravity Workspace with 47+ specialized agent skills and automated orchestration engine",
-  "main": "orchestrator.mjs",
+  "description": "Studio A V2 - Unified Antigravity Autonomous Workspace with 47 specialized agent skills and intelligent orchestration engine",
   "type": "module",
+  "main": "orchestrator.mjs",
+  "bin": {
+    "orchestrator": "./orchestrator.mjs"
+  },
   "scripts": {
     "workflow": "node orchestrator.mjs",
     "orchestrate": "node orchestrator.mjs",
     "status": "node orchestrator.mjs status",
+    "health": "node orchestrator.mjs health",
     "route": "node orchestrator.mjs route",
     "precheck": "node orchestrator.mjs precheck",
     "dashboard": "node orchestrator.mjs dashboard",
