@@ -1,0 +1,3 @@
+{
+  "window.title": "Agent Yaya — ${dirty}${activeEditorShort}${separator}${rootName}"
+}
